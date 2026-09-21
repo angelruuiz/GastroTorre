@@ -201,7 +201,7 @@ export default function RestaurantDetailPage() {
                   )}
 
                   <span className="text-[11px] font-black tracking-tight text-white drop-shadow-sm whitespace-nowrap">
-                    {liveStatus.isOpen ? 'Abierto ahora' : 'Cerrado ahora'}
+                    {liveStatus.isOpen ? 'Abierto ahora' : (liveStatus.label || 'Cerrado ahora')}
                   </span>
 
                   <Clock className="w-3 h-3 text-white/90 group-hover:rotate-12 transition-transform" />
@@ -702,6 +702,18 @@ export default function RestaurantDetailPage() {
             </div>
 
             <div className="space-y-2 text-xs">
+              {restaurant.schedule.isTemporarilyClosed && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/70 rounded-2xl border border-rose-200 dark:border-rose-800 text-xs space-y-1">
+                  <div className="font-black text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                    <span>Aviso de Cierre Temporal</span>
+                  </div>
+                  <p className="text-rose-800 dark:text-rose-300 text-[11px] leading-relaxed">
+                    {restaurant.schedule.closedReason || 'Cerrado temporalmente por asuntos propios.'}
+                  </p>
+                </div>
+              )}
+
               <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <span className="font-bold text-slate-700 dark:text-slate-300">Días de apertura:</span>
                 <span className="font-black text-slate-900 dark:text-white">{restaurant.schedule.days}</span>

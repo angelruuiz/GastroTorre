@@ -55,6 +55,8 @@ export interface Restaurant {
     days: string;
     lunch: string;
     dinner?: string;
+    isTemporarilyClosed?: boolean;
+    closedReason?: string;
   };
   features: string[]; // ['Terraza exterior', 'Parking cercano', 'Pet Friendly', 'Opciones Celíacos', 'WiFi']
   featured: boolean;

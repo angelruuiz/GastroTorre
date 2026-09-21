@@ -96,20 +96,39 @@ async function applyDishChangeToSupabase(dishNameSearch: string, updates: { pric
     if (updates.photo_url !== undefined) payload.photo_url = updates.photo_url;
     payload.updated_at = new Date().toISOString();
 
-    const stopWords = new Set(['de', 'del', 'la', 'el', 'las', 'los', 'con', 'y', 'en', 'sobre', 'al', 'a', 'para']);
-    const meaningfulWords = dishNameSearch
+    const genericWords = new Set([
+      'tosta', 'tostas', 'pizza', 'pizzas', 'burger', 'burgers', 'ensalada', 'ensaladas',
+      'tarta', 'tartas', 'arroz', 'arroces', 'plato', 'platos', 'racion', 'raciones',
+      'de', 'del', 'la', 'el', 'las', 'los', 'con', 'y', 'en', 'sobre', 'al', 'a', 'para',
+      'nuestro', 'nuestros', 'nuestra', 'nuestras', 'casa', 'especial'
+    ]);
+
+    const words = dishNameSearch
       .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, ' ')
       .trim()
       .split(/\s+/)
-      .filter((w) => w.length > 2 && !stopWords.has(w.toLowerCase()));
+      .filter((w) => w.length >= 3 && !genericWords.has(w.toLowerCase()));
 
-    // Prioritize distinctive keywords first (e.g. Bogavante, Tartar, Alcachofas, Chuletón, Burrata)
-    const keywordsToTry = meaningfulWords.length > 0 ? meaningfulWords : [dishNameSearch.trim().split(' ')[0]];
+    // Try multiple search strategies from most specific to broader
+    const searchQueries: string[] = [];
+
+    // 1. Compound: top 2 distinctive words (*Avocado*Toast* or *Salmón*Ahumado*)
+    if (words.length >= 2) {
+      searchQueries.push(`*${encodeURIComponent(words[0])}*${encodeURIComponent(words[1])}*`);
+    }
+    // 2. Single most distinctive word (e.g. *Avocado*, *Salmón*, *Bogavante*, *Tartar*, *Diavola*)
+    if (words.length >= 1) {
+      searchQueries.push(`*${encodeURIComponent(words[0])}*`);
+    }
+    // 3. First non-empty word fallback
+    const firstWord = dishNameSearch.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, '').trim().split(/\s+/)[0];
+    if (firstWord && !searchQueries.some(q => q.includes(encodeURIComponent(firstWord)))) {
+      searchQueries.push(`*${encodeURIComponent(firstWord)}*`);
+    }
+
     let matched = false;
-
-    for (const word of keywordsToTry) {
-      const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?name=ilike.*${encodeURIComponent(word)}*`;
-
+    for (const q of searchQueries) {
+      const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?name=ilike.${q}`;
       const res = await fetch(queryUrl, {
         method: 'PATCH',
         headers: {
@@ -124,7 +143,7 @@ async function applyDishChangeToSupabase(dishNameSearch: string, updates: { pric
       if (res.ok) {
         const data = await res.json();
         if (data && data.length > 0) {
-          console.log(`✅ [Supabase Cloud] Actualizadas ${data.length} filas para "${word}":`, data);
+          console.log(`✅ [Supabase Cloud] Actualizadas ${data.length} filas con query "${q}":`, data.map((d: any) => d.name));
           matched = true;
           break;
         }

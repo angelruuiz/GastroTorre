@@ -19,11 +19,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/logo-gastrotorre.jpeg', type: 'image/jpeg' },
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: '/logo-gastrotorre.jpeg',
+    shortcut: '/favicon.png',
     apple: [
-      { url: '/logo-gastrotorre.jpeg', sizes: '180x180', type: 'image/jpeg' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   openGraph: {
@@ -34,9 +36,9 @@ export const metadata: Metadata = {
     siteName: 'GastroTorre',
     images: [
       {
-        url: '/logo-gastrotorre.jpeg',
-        width: 800,
-        height: 800,
+        url: '/logo-gastrotorre.png',
+        width: 1024,
+        height: 1024,
         alt: 'GastroTorre - Guía Gastronómica y Cartas Digitales de Torrelodones',
       },
     ],
@@ -45,7 +47,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'GastroTorre — Guía Gastronómica de Torrelodones',
     description: 'Cartas digitales, fotos, precios actualizados y reservas directas de los restaurantes de Torrelodones.',
-    images: ['/logo-gastrotorre.jpeg'],
+    images: ['/logo-gastrotorre.png'],
   },
 };
 
@@ -54,7 +56,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#1d4ed8',
+  themeColor: '#252d36',
 };
 
 export default function RootLayout({

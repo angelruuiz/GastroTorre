@@ -39,7 +39,12 @@ async function notifyTelegramAdmin(lead: {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { restaurant_name, contact_name, phone, email, plan_interest, zone } = body;
+    const restaurant_name = body.restaurant_name || body.restaurantName || body.name;
+    const contact_name = body.contact_name || body.contactName || body.owner || body.contact;
+    const phone = body.phone;
+    const email = body.email || '';
+    const plan_interest = body.plan_interest || body.plan || 'Plan Pro (59€/mes)';
+    const zone = body.zone || 'Torrelodones Pueblo';
 
     if (!restaurant_name || !contact_name || !phone) {
       return NextResponse.json(

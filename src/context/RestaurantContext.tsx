@@ -2,23 +2,22 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Restaurant, initialRestaurants, Dish, MenuCategory } from '@/data/restaurants';
-import {
-  DatabaseService,
-  HosteleroUser,
-  ReservationRecord,
-  DEMO_HOSTELEROS,
-} from '@/lib/database/dbService';
+import { DatabaseService, ReservationRecord } from '@/lib/database/dbService';
+import { AuthService, UserAccount, INITIAL_ACCOUNTS } from '@/lib/auth/authService';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface RestaurantContextType {
   restaurants: Restaurant[];
-  currentUser: HosteleroUser | null;
+  currentUser: UserAccount | null;
+  accounts: UserAccount[];
   reservations: ReservationRecord[];
   isCloudConnected: boolean;
   isLoading: boolean;
   getRestaurantBySlug: (slug: string) => Restaurant | undefined;
   getRestaurantById: (id: string) => Restaurant | undefined;
   updateRestaurant: (id: string, updatedData: Partial<Restaurant>) => void;
+  addNewRestaurant: (newRestaurant: Restaurant) => void;
+  deleteRestaurant: (id: string) => void;
   updateDish: (restaurantId: string, categoryId: string, dishId: string, updatedDish: Partial<Dish>) => void;
   addDish: (restaurantId: string, categoryId: string, newDish: Dish) => void;
   deleteDish: (restaurantId: string, categoryId: string, dishId: string) => void;
@@ -27,9 +26,19 @@ interface RestaurantContextType {
   deleteCategory: (restaurantId: string, categoryId: string) => void;
   createReservation: (res: Omit<ReservationRecord, 'id' | 'createdAt'>) => Promise<ReservationRecord>;
   updateReservationStatus: (id: string, status: ReservationRecord['status']) => Promise<void>;
-  switchHosteleroUser: (restaurantId: string) => void;
-  loginWithEmail: (email: string, pass?: string) => Promise<void>;
-  logoutHostelero: () => void;
+  login: (identifier: string, pass: string) => { success: boolean; user?: UserAccount; error?: string };
+  logout: () => void;
+  changeUserPassword: (userId: string, newPass: string) => boolean;
+  createHosteleroAccount: (acc: {
+    email: string;
+    username: string;
+    password: string;
+    name: string;
+    restaurantId: string;
+    restaurantSlug: string;
+    restaurantName: string;
+  }) => { success: boolean; user?: UserAccount; error?: string };
+  deleteHosteleroAccount: (userId: string) => boolean;
   resetAllData: () => void;
 }
 
@@ -37,12 +46,13 @@ const RestaurantContext = createContext<RestaurantContextType | undefined>(undef
 
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>(initialRestaurants);
-  const [currentUser, setCurrentUser] = useState<HosteleroUser | null>(DEMO_HOSTELEROS[0]);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [accounts, setAccounts] = useState<UserAccount[]>(INITIAL_ACCOUNTS);
   const [reservations, setReservations] = useState<ReservationRecord[]>([]);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize data on mount
+  // Initialize data and session on mount
   useEffect(() => {
     const init = async () => {
       try {
@@ -50,15 +60,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const loadedRestaurants = await DatabaseService.getRestaurants();
         setRestaurants(loadedRestaurants);
 
-        const sessionUser = DatabaseService.getSessionUser();
-        if (sessionUser) {
-          setCurrentUser(sessionUser);
-          const loadedRes = await DatabaseService.getReservations(sessionUser.restaurantId);
-          setReservations(loadedRes);
-        } else {
-          const loadedRes = await DatabaseService.getReservations('1');
-          setReservations(loadedRes);
-        }
+        // Load active session from AuthService
+        const activeUser = AuthService.getCurrentUser();
+        setCurrentUser(activeUser);
+
+        // Load accounts list
+        const loadedAccounts = AuthService.getUsers();
+        setAccounts(loadedAccounts);
+
+        // Load reservations
+        const targetRestId = activeUser?.restaurantId || (loadedRestaurants[0]?.id || '1');
+        const loadedRes = await DatabaseService.getReservations(targetRestId);
+        setReservations(loadedRes);
       } catch (err) {
         console.error('Error initializing database service:', err);
       } finally {
@@ -74,15 +87,28 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const getRestaurantById = (id: string) => {
-    return restaurants.find((r) => r.id === id);
+    return restaurants.find((r) => r.id === id || r.slug === id);
   };
 
   const updateRestaurant = async (id: string, updatedData: Partial<Restaurant>) => {
-    const current = restaurants.find((r) => r.id === id);
+    const current = restaurants.find((r) => r.id === id || r.slug === id);
     if (!current) return;
     const merged: Restaurant = { ...current, ...updatedData };
     const updatedList = await DatabaseService.updateRestaurant(merged);
     setRestaurants(updatedList);
+  };
+
+  const addNewRestaurant = async (newRestaurant: Restaurant) => {
+    const updatedList = await DatabaseService.updateRestaurant(newRestaurant);
+    setRestaurants(updatedList);
+  };
+
+  const deleteRestaurant = (id: string) => {
+    const updatedList = restaurants.filter((r) => r.id !== id && r.slug !== id);
+    setRestaurants(updatedList);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gastrotorre_db_restaurants_v2', JSON.stringify(updatedList));
+    }
   };
 
   const updateDish = async (
@@ -91,33 +117,42 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     dishId: string,
     updatedDish: Partial<Dish>
   ) => {
-    const rest = restaurants.find((r) => r.id === restaurantId);
+    const rest = restaurants.find((r) => r.id === restaurantId || r.slug === restaurantId);
     if (!rest) return;
     const cat = rest.menu.find((c) => c.id === categoryId);
     const dish = cat?.dishes.find((d) => d.id === dishId);
     if (!dish) return;
 
     const mergedDish: Dish = { ...dish, ...updatedDish };
-    const updatedList = await DatabaseService.saveDish(restaurantId, categoryId, mergedDish);
+    const updatedList = await DatabaseService.saveDish(rest.id, categoryId, mergedDish);
     setRestaurants(updatedList);
   };
 
   const addDish = async (restaurantId: string, categoryId: string, newDish: Dish) => {
-    const updatedList = await DatabaseService.saveDish(restaurantId, categoryId, newDish);
+    const rest = restaurants.find((r) => r.id === restaurantId || r.slug === restaurantId);
+    const targetId = rest?.id || restaurantId;
+    const updatedList = await DatabaseService.saveDish(targetId, categoryId, newDish);
     setRestaurants(updatedList);
   };
 
   const deleteDish = async (restaurantId: string, _categoryId: string, dishId: string) => {
-    const updatedList = await DatabaseService.deleteDish(restaurantId, dishId);
+    const rest = restaurants.find((r) => r.id === restaurantId || r.slug === restaurantId);
+    const targetId = rest?.id || restaurantId;
+    const updatedList = await DatabaseService.deleteDish(targetId, dishId);
     setRestaurants(updatedList);
   };
 
   const toggleDishAvailability = async (restaurantId: string, _categoryId: string, dishId: string) => {
-    const updatedList = await DatabaseService.toggleDishAvailability(restaurantId, dishId);
+    const rest = restaurants.find((r) => r.id === restaurantId || r.slug === restaurantId);
+    const targetId = rest?.id || restaurantId;
+    const updatedList = await DatabaseService.toggleDishAvailability(targetId, dishId);
     setRestaurants(updatedList);
   };
 
   const addCategory = async (restaurantId: string, newCategory: { name: string; description?: string }) => {
+    const currentRest = restaurants.find((r) => r.id === restaurantId || r.slug === restaurantId);
+    if (!currentRest) return;
+
     const slug = newCategory.name
       .toLowerCase()
       .normalize('NFD')
@@ -133,9 +168,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       dishes: [],
     };
 
-    const currentRest = restaurants.find((r) => r.id === restaurantId);
-    if (!currentRest) return;
-
     const updatedMenu = [...currentRest.menu, category];
     const updatedRest = { ...currentRest, menu: updatedMenu };
     const updatedList = await DatabaseService.updateRestaurant(updatedRest);
@@ -143,7 +175,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteCategory = async (restaurantId: string, categoryId: string) => {
-    const currentRest = restaurants.find((r) => r.id === restaurantId);
+    const currentRest = restaurants.find((r) => r.id === restaurantId || r.slug === restaurantId);
     if (!currentRest) return;
 
     const updatedMenu = currentRest.menu.filter((c) => c.id !== categoryId);
@@ -163,23 +195,58 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setReservations(updated);
   };
 
-  const switchHosteleroUser = async (restaurantId: string) => {
-    const user = await DatabaseService.loginWithDemo(restaurantId);
-    setCurrentUser(user);
-    const res = await DatabaseService.getReservations(restaurantId);
-    setReservations(res);
+  // --------------------------------------------------------------------------
+  // AUTHENTICATION & CREDENTIALS
+  // --------------------------------------------------------------------------
+  const login = (identifier: string, pass: string) => {
+    const res = AuthService.login(identifier, pass);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      setAccounts(AuthService.getUsers());
+      if (res.user.restaurantId) {
+        DatabaseService.getReservations(res.user.restaurantId).then(setReservations);
+      }
+    }
+    return res;
   };
 
-  const loginWithEmail = async (email: string, pass?: string) => {
-    const user = await DatabaseService.loginWithEmail(email, pass);
-    setCurrentUser(user);
-    const res = await DatabaseService.getReservations(user.restaurantId);
-    setReservations(res);
-  };
-
-  const logoutHostelero = async () => {
-    await DatabaseService.logout();
+  const logout = () => {
+    AuthService.logout();
     setCurrentUser(null);
+  };
+
+  const changeUserPassword = (userId: string, newPass: string) => {
+    const ok = AuthService.changePassword(userId, newPass);
+    if (ok) {
+      setAccounts(AuthService.getUsers());
+      const active = AuthService.getCurrentUser();
+      if (active) setCurrentUser(active);
+    }
+    return ok;
+  };
+
+  const createHosteleroAccount = (acc: {
+    email: string;
+    username: string;
+    password: string;
+    name: string;
+    restaurantId: string;
+    restaurantSlug: string;
+    restaurantName: string;
+  }) => {
+    const res = AuthService.createHosteleroAccount(acc);
+    if (res.success) {
+      setAccounts(AuthService.getUsers());
+    }
+    return res;
+  };
+
+  const deleteHosteleroAccount = (userId: string) => {
+    const ok = AuthService.deleteAccount(userId);
+    if (ok) {
+      setAccounts(AuthService.getUsers());
+    }
+    return ok;
   };
 
   const resetAllData = () => {
@@ -187,7 +254,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.clear();
     }
     setRestaurants(initialRestaurants);
-    setCurrentUser(DEMO_HOSTELEROS[0]);
+    setAccounts(INITIAL_ACCOUNTS);
+    setCurrentUser(null);
   };
 
   return (
@@ -195,12 +263,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       value={{
         restaurants,
         currentUser,
+        accounts,
         reservations,
         isCloudConnected,
         isLoading,
         getRestaurantBySlug,
         getRestaurantById,
         updateRestaurant,
+        addNewRestaurant,
+        deleteRestaurant,
         updateDish,
         addDish,
         deleteDish,
@@ -209,9 +280,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         deleteCategory,
         createReservation,
         updateReservationStatus,
-        switchHosteleroUser,
-        loginWithEmail,
-        logoutHostelero,
+        login,
+        logout,
+        changeUserPassword,
+        createHosteleroAccount,
+        deleteHosteleroAccount,
         resetAllData,
       }}
     >

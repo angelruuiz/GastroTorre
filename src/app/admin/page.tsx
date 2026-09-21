@@ -41,24 +41,34 @@ import {
   XCircle,
   AlertCircle,
   UserCheck,
-  User
+  User,
+  Lock,
+  KeyRound,
+  ShieldCheck,
+  LogOut,
+  Users,
+  ShieldAlert,
+  Building2,
+  Briefcase,
+  UserPlus
 } from 'lucide-react';
 import { QRModal } from '@/components/QRModal';
 import { DishPhotoModal } from '@/components/DishPhotoModal';
 import { JoinGastroTorreModal } from '@/components/JoinGastroTorreModal';
 import { DossierModal } from '@/components/DossierModal';
-import { Dish, initialRestaurants } from '@/data/restaurants';
-import { FOOD_PHOTO_PRESETS } from '@/data/photoPresets';
-import { OFFICIAL_ALLERGENS } from '@/data/allergens';
-import { DEMO_HOSTELEROS } from '@/lib/database/dbService';
+import { Dish, Restaurant, initialRestaurants } from '@/data/restaurants';
+import { DatabaseService, LeadRecord } from '@/lib/database/dbService';
 
 export default function AdminPage() {
   const { 
     restaurants, 
     currentUser,
+    accounts,
     reservations,
     isCloudConnected,
     updateRestaurant, 
+    addNewRestaurant,
+    deleteRestaurant,
     updateDish, 
     addDish, 
     deleteDish, 
@@ -67,11 +77,50 @@ export default function AdminPage() {
     deleteCategory,
     createReservation,
     updateReservationStatus,
-    switchHosteleroUser,
+    login,
+    logout,
+    changeUserPassword,
+    createHosteleroAccount,
+    deleteHosteleroAccount,
     resetAllData 
   } = useRestaurants();
 
+  // Login form states
+  const [loginId, setLoginId] = useState('');
+  const [loginPass, setLoginPass] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Superadmin view state
+  const [adminTab, setAdminTab] = useState<'restaurants' | 'accounts' | 'onboard' | 'leads' | 'stats'>('restaurants');
   const [selectedRestId, setSelectedRestId] = useState<string>('');
+  
+  // Superadmin Password Reset Modal state
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+
+  // Superadmin New Account Modal state
+  const [showNewAccountModal, setShowNewAccountModal] = useState(false);
+  const [newAccName, setNewAccName] = useState('');
+  const [newAccEmail, setNewAccEmail] = useState('');
+  const [newAccUsername, setNewAccUsername] = useState('');
+  const [newAccPass, setNewAccPass] = useState('');
+  const [newAccRestSlug, setNewAccRestSlug] = useState('');
+
+  // Superadmin New Restaurant Wizard state
+  const [newRestName, setNewRestName] = useState('');
+  const [newRestTagline, setNewRestTagline] = useState('');
+  const [newRestCuisine, setNewRestCuisine] = useState('Cocina Tradicional & Tapas');
+  const [newRestZone, setNewRestZone] = useState('Torrelodones Pueblo');
+  const [newRestAddress, setNewRestAddress] = useState('');
+  const [newRestPhone, setNewRestPhone] = useState('');
+  const [newRestWhatsApp, setNewRestWhatsApp] = useState('');
+  const [newRestOwnerPass, setNewRestOwnerPass] = useState('');
+
+  // Leads list
+  const [leadsList, setLeadsList] = useState<LeadRecord[]>([]);
+
+  // Hostelero tabs & modals state
   const [activeTab, setActiveTab] = useState<'menu' | 'daily-menu' | 'reservations' | 'stats' | 'info' | 'qr' | 'help'>('menu');
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
@@ -132,13 +181,25 @@ export default function AdminPage() {
 
   useEffect(() => {
     setMounted(true);
-    if (restaurants.length > 0 && !selectedRestId) {
-      setSelectedRestId(currentUser?.restaurantId || restaurants[0].id);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('gastrotorre_db_leads_v2');
+      if (stored) {
+        try { setLeadsList(JSON.parse(stored)); } catch {}
+      }
     }
-  }, [restaurants, selectedRestId, currentUser]);
+  }, []);
+
+  // Update target restaurant when user changes
+  useEffect(() => {
+    if (currentUser?.role === 'owner' && currentUser.restaurantSlug) {
+      setSelectedRestId(currentUser.restaurantSlug);
+    } else if (currentUser?.role === 'superadmin' && !selectedRestId && restaurants.length > 0) {
+      setSelectedRestId(restaurants[0].id || restaurants[0].slug);
+    }
+  }, [currentUser, restaurants, selectedRestId]);
 
   const currentRestaurant = 
-    restaurants.find((r) => r.id === selectedRestId) || 
+    restaurants.find((r) => r.slug === selectedRestId || r.id === selectedRestId) || 
     restaurants[0] || 
     initialRestaurants[0];
 
@@ -161,12 +222,164 @@ export default function AdminPage() {
       setDailyMenuIncludes('Incluye primer plato, segundo, pan, bebida y postre o café.');
       setDailyMenuNotes('Disponible de Lunes a Viernes de 13:30 a 16:30.');
     }
-  }, [currentRestaurant?.id]);
+  }, [currentRestaurant?.id, currentRestaurant?.slug]);
 
   const triggerToast = (msg: string) => {
     setSavedMessage(msg);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
+  };
+
+  // Handle Login Submit
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!loginId.trim() || !loginPass) {
+      setLoginError('Por favor, introduce tu usuario y contraseña.');
+      return;
+    }
+
+    const res = login(loginId.trim(), loginPass);
+    if (!res.success) {
+      setLoginError(res.error || 'Credenciales no válidas.');
+    } else {
+      setLoginId('');
+      setLoginPass('');
+      triggerToast(res.user?.role === 'superadmin' ? '👑 Bienvenido Ángel (Superadmin)' : `Bienvenido ${res.user?.name}`);
+    }
+  };
+
+  // Quick Demo Preset Login
+  const handleQuickLogin = (id: string, pass: string) => {
+    setLoginId(id);
+    setLoginPass(pass);
+    const res = login(id, pass);
+    if (res.success) {
+      triggerToast(res.user?.role === 'superadmin' ? '👑 Sesión iniciada como Superadmin' : `Sesión iniciada: ${res.user?.name}`);
+    }
+  };
+
+  // Superadmin: Handle Password Change
+  const handlePasswordChangeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserId || !newPasswordInput.trim()) return;
+
+    changeUserPassword(editingUserId, newPasswordInput.trim());
+    setEditingUserId(null);
+    setNewPasswordInput('');
+    triggerToast('¡Contraseña actualizada con éxito en la base de datos!');
+  };
+
+  // Superadmin: Handle Create Account
+  const handleCreateAccountSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccEmail || !newAccUsername || !newAccPass) return;
+
+    const rest = restaurants.find((r) => r.slug === newAccRestSlug) || restaurants[0];
+    const res = createHosteleroAccount({
+      email: newAccEmail.trim(),
+      username: newAccUsername.trim(),
+      password: newAccPass.trim(),
+      name: newAccName.trim() || rest.name,
+      restaurantId: rest.id || rest.slug,
+      restaurantSlug: rest.slug,
+      restaurantName: rest.name,
+    });
+
+    if (res.success) {
+      setShowNewAccountModal(false);
+      setNewAccName('');
+      setNewAccEmail('');
+      setNewAccUsername('');
+      setNewAccPass('');
+      triggerToast('¡Nueva cuenta de hostelero creada con éxito!');
+    } else {
+      alert(res.error);
+    }
+  };
+
+  // Superadmin: Handle Onboard New Restaurant
+  const handleOnboardRestaurantSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRestName.trim()) return;
+
+    const slug = newRestName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
+    const newRest: Restaurant = {
+      id: slug,
+      slug: slug,
+      name: newRestName.trim(),
+      tagline: newRestTagline.trim() || 'Gastronomía de Torrelodones',
+      description: `${newRestName} en ${newRestZone}. Disfruta de nuestra cocina y carta digitalizada.`,
+      cuisine: newRestCuisine,
+      category: 'mediterranea',
+      priceLevel: '€€',
+      rating: 5.0,
+      reviewCount: 1,
+      capacity: 50,
+      coverImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop',
+      logoImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=300&auto=format&fit=crop',
+      address: newRestAddress.trim() || `Calle Principal, 28250 ${newRestZone}`,
+      zone: newRestZone,
+      googleMapsUrl: 'https://maps.google.com/?q=Torrelodones+Madrid',
+      phone: newRestPhone.trim() || '+34 918 00 00 00',
+      whatsapp: newRestWhatsApp.trim() || '+34 600 000 000',
+      bookingType: 'whatsapp',
+      schedule: {
+        days: 'Martes a Domingo',
+        lunch: '13:30 - 16:30',
+        dinner: '20:30 - 23:30',
+      },
+      features: ['Carta digital oficial', 'Terraza', 'Reserva por WhatsApp'],
+      featured: false,
+      menu: [
+        {
+          id: 'entrantes',
+          name: 'Entrantes & Raciones',
+          description: 'Especialidades de la casa',
+          dishes: [
+            {
+              id: `${slug}-dish-1`,
+              name: 'Croquetas Artesanas de la Casa (6 uds)',
+              description: 'Receta tradicional con leche fresca y rebozado crujiente',
+              price: 12.50,
+              allergens: ['gluten', 'lactosa', 'huevo'],
+              isSpecialty: true,
+              isAvailable: true,
+            }
+          ]
+        }
+      ]
+    };
+
+    addNewRestaurant(newRest);
+
+    // Create owner account for this restaurant
+    if (newRestOwnerPass.trim()) {
+      createHosteleroAccount({
+        email: `${slug}@gastrotorre.es`,
+        username: slug,
+        password: newRestOwnerPass.trim(),
+        name: newRestName,
+        restaurantId: slug,
+        restaurantSlug: slug,
+        restaurantName: newRestName,
+      });
+    }
+
+    setNewRestName('');
+    setNewRestTagline('');
+    setNewRestAddress('');
+    setNewRestPhone('');
+    setNewRestWhatsApp('');
+    setNewRestOwnerPass('');
+    setAdminTab('restaurants');
+    triggerToast(`¡Restaurante "${newRest.name}" dado de alta y publicado!`);
   };
 
   const handleSaveInfo = (e: React.FormEvent<HTMLFormElement>) => {
@@ -331,7 +544,7 @@ export default function AdminPage() {
     triggerToast('¡Reserva añadida al libro de mesas!');
   };
 
-  const currentReservations = reservations.filter((r) => r.restaurantId === currentRestaurant.id);
+  const currentReservations = reservations.filter((r) => r.restaurantId === currentRestaurant.id || r.restaurantId === currentRestaurant.slug);
   const filteredReservations = currentReservations.filter((r) => {
     if (resFilter === 'all') return true;
     return r.status === resFilter;
@@ -359,9 +572,768 @@ export default function AdminPage() {
     ],
   };
 
+  // ==========================================================================
+  // VIEW 1: LOGIN SCREEN (IF NO ACTIVE SESSION)
+  // ==========================================================================
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black text-white px-4 py-8 flex flex-col justify-center items-center">
+        <div className="w-full max-w-sm space-y-6">
+          {/* Logo & Branding */}
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-torre-600 border border-blue-400/40 flex items-center justify-center mx-auto shadow-xl shadow-blue-600/30">
+              <Store className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="text-xl font-black text-white tracking-tight">
+              Portal Gastro<span className="text-torre-500">Torre</span>
+            </h1>
+            <p className="text-xs text-slate-400">
+              Acceso privado para Hosteleros y Administración
+            </p>
+          </div>
+
+          {/* Secure Login Card */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 backdrop-blur-md">
+            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-[11px] font-bold text-slate-300">
+                Inicio de Sesión Seguro (SSL 256-bit)
+              </span>
+            </div>
+
+            {loginError && (
+              <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Usuario o Correo Electrónico
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                    placeholder="admin@gastrotorre.es / tu-restaurante"
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-torre-500"
+                    required
+                  />
+                  <User className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Contraseña de Acceso
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={loginPass}
+                    onChange={(e) => setLoginPass(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-torre-500 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs font-semibold"
+                  >
+                    {showPassword ? 'Ocultar' : 'Ver'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-2xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-black shadow-lg shadow-blue-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Lock className="w-4 h-4 text-oro-400" />
+                <span>Entrar al Panel</span>
+              </button>
+            </form>
+
+            {/* Anti-Spam / Registration Notice */}
+            <div className="pt-2 border-t border-slate-800 text-center">
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                🛡️ <strong>Registro cerrado por seguridad:</strong> Las cuentas son creadas y autorizadas únicamente por la administración para evitar spam.
+              </p>
+            </div>
+          </div>
+
+          {/* Preset Buttons for Quick Demo Testing */}
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 space-y-2.5">
+            <span className="text-[10px] font-bold text-oro-400 uppercase tracking-wider block text-center">
+              ⚡ Accesos de Prueba Rápidos:
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleQuickLogin('admin@gastrotorre.es', 'wEyzye9b')}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-torre-900/50 border border-slate-700 hover:border-torre-500 text-[11px] font-bold text-left transition-all"
+              >
+                <div className="text-oro-400 flex items-center gap-1">
+                  <span>👑 Superadmin</span>
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">admin / wEyzye9b</div>
+              </button>
+
+              <button
+                onClick={() => handleQuickLogin('jarales@gastrotorre.es', 'Jarales2026!')}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-torre-900/50 border border-slate-700 hover:border-torre-500 text-[11px] font-bold text-left transition-all"
+              >
+                <div className="text-white flex items-center gap-1">
+                  <span>🥩 Los Jarales</span>
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">jarales / Jarales2026!</div>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/"
+              className="text-xs text-slate-400 hover:text-white transition-colors"
+            >
+              ← Volver a la portada de Torrelodones
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // VIEW 2: SUPERADMIN MASTER PANEL (IF currentUser.role === 'superadmin')
+  // ==========================================================================
+  if (currentUser.role === 'superadmin') {
+    return (
+      <div className="space-y-5 px-4 py-6 bg-slate-900 min-h-screen text-slate-100">
+        {/* Superadmin Header Bar */}
+        <div className="bg-gradient-to-r from-torre-950 via-slate-900 to-black p-5 rounded-3xl border border-torre-800/80 shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 text-xl">
+                👑
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/40">
+                    Superadmin Master
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Base de Datos Activa
+                  </span>
+                </div>
+                <h1 className="text-lg font-black text-white">
+                  Panel de Control Maestro — Ángel Ruiz
+                </h1>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Link
+                href="/"
+                target="_blank"
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition-all"
+              >
+                Ver Web
+              </Link>
+              <button
+                onClick={logout}
+                className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/40 text-rose-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Cerrar Sesión</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-center">
+            <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+              <span className="text-[10px] text-slate-400 block font-bold">Restaurantes</span>
+              <span className="text-lg font-black text-white">{restaurants.length}</span>
+            </div>
+            <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+              <span className="text-[10px] text-slate-400 block font-bold">Cuentas Clientes</span>
+              <span className="text-lg font-black text-amber-400">{accounts.filter(a => a.role === 'owner').length}</span>
+            </div>
+            <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+              <span className="text-[10px] text-slate-400 block font-bold">Leads Nuevos</span>
+              <span className="text-lg font-black text-emerald-400">{leadsList.length}</span>
+            </div>
+            <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+              <span className="text-[10px] text-slate-400 block font-bold">Total Platos</span>
+              <span className="text-lg font-black text-torre-400">
+                {restaurants.reduce((acc, r) => acc + (r.menu?.reduce((cAcc, c) => cAcc + (c.dishes?.length || 0), 0) || 0), 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Superadmin Navigation Tabs */}
+        <div className="bg-slate-800/80 p-1 rounded-2xl border border-slate-700/80 flex gap-1 text-xs font-bold overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setAdminTab('restaurants')}
+            className={`flex-1 min-w-[110px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              adminTab === 'restaurants'
+                ? 'bg-torre-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-oro-400" />
+            <span>Restaurantes ({restaurants.length})</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('accounts')}
+            className={`flex-1 min-w-[110px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              adminTab === 'accounts'
+                ? 'bg-torre-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <KeyRound className="w-4 h-4 text-amber-400" />
+            <span>Cuentas & Claves</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('onboard')}
+            className={`flex-1 min-w-[110px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              adminTab === 'onboard'
+                ? 'bg-torre-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <UserPlus className="w-4 h-4 text-emerald-400" />
+            <span>+ Dar de Alta Local</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('leads')}
+            className={`flex-1 min-w-[90px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all relative ${
+              adminTab === 'leads'
+                ? 'bg-torre-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <Briefcase className="w-4 h-4 text-blue-400" />
+            <span>Leads</span>
+            {leadsList.length > 0 && (
+              <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[9px] font-black flex items-center justify-center">
+                {leadsList.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* TAB 1: RESTAURANTES LIST & IMPERSONATION */}
+        {adminTab === 'restaurants' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                Directorio de Restaurantes en Base de Datos
+              </h3>
+              <button
+                onClick={() => setAdminTab('onboard')}
+                className="px-3 py-1.5 rounded-xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-bold transition-all flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuevo Restaurante</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {restaurants.map((rest) => {
+                const totalDishes = rest.menu?.reduce((acc, cat) => acc + (cat.dishes?.length || 0), 0) || 0;
+                return (
+                  <div
+                    key={rest.id || rest.slug}
+                    className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl shadow-soft space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={rest.coverImage || rest.logoImage}
+                          alt={rest.name}
+                          className="w-12 h-12 rounded-2xl object-cover border border-slate-600 shrink-0"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-black text-white">{rest.name}</h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-torre-900/60 text-torre-300 border border-torre-700/60">
+                              {rest.zone}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {rest.cuisine} • {totalDishes} platos en carta • Aforo: {rest.capacity || 50} pax
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Link
+                          href={`/restaurante/${rest.slug}`}
+                          target="_blank"
+                          className="p-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
+                          title="Ver Carta Pública"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Eliminar el restaurante "${rest.name}" de la base de datos?`)) {
+                              deleteRestaurant(rest.id || rest.slug);
+                              triggerToast(`Restaurante "${rest.name}" eliminado`);
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white transition-colors"
+                          title="Eliminar Restaurante"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-700/80 text-xs">
+                      <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                        <span>📞 {rest.phone}</span>
+                        <span>•</span>
+                        <span>💬 {rest.whatsapp}</span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setSelectedRestId(rest.slug || rest.id);
+                          // Temporarily impersonate as this restaurant's manager view
+                          const mockOwnerUser = {
+                            id: `usr-${rest.slug}`,
+                            email: `${rest.slug}@gastrotorre.es`,
+                            username: rest.slug,
+                            passwordHash: 'impersonated',
+                            name: rest.name,
+                            role: 'owner' as const,
+                            restaurantId: rest.id || rest.slug,
+                            restaurantSlug: rest.slug,
+                            restaurantName: rest.name,
+                            createdAt: new Date().toISOString(),
+                            isActive: true,
+                          };
+                          login(mockOwnerUser.username, mockOwnerUser.passwordHash);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all active:scale-95 flex items-center gap-1 shadow-md shadow-amber-500/20"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Editar Carta & Platos</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: ACCOUNTS & PASSWORDS MANAGER */}
+        {adminTab === 'accounts' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                  Cuentas de Hosteleros & Claves de Acceso
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Solo tú puedes cambiar contraseñas y crear nuevos accesos.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowNewAccountModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>+ Nueva Cuenta</span>
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {accounts.map((acc) => (
+                <div
+                  key={acc.id}
+                  className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-white">{acc.name}</span>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        acc.role === 'superadmin'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                      }`}>
+                        {acc.role === 'superadmin' ? '👑 Superadmin' : 'Hostelero'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 mt-1 font-mono">
+                      <span>Email: <strong className="text-slate-200">{acc.email}</strong></span>
+                      <span>•</span>
+                      <span>Usuario: <strong className="text-slate-200">{acc.username}</strong></span>
+                      <span>•</span>
+                      <span>Clave: <strong className="text-amber-400 bg-slate-950 px-1.5 py-0.5 rounded">{acc.passwordHash}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        setEditingUserId(acc.id);
+                        setNewPasswordInput(acc.passwordHash);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold transition-all flex items-center gap-1"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Cambiar Clave</span>
+                    </button>
+
+                    {acc.role !== 'superadmin' && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Eliminar la cuenta de ${acc.name}?`)) {
+                            deleteHosteleroAccount(acc.id);
+                            triggerToast('Cuenta eliminada');
+                          }
+                        }}
+                        className="p-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white transition-colors"
+                        title="Eliminar Cuenta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: ONBOARD NEW RESTAURANT WIZARD */}
+        {adminTab === 'onboard' && (
+          <form onSubmit={handleOnboardRestaurantSubmit} className="bg-slate-800/90 border border-slate-700 p-5 rounded-3xl space-y-4">
+            <div className="border-b border-slate-700 pb-3">
+              <h3 className="text-base font-black text-white">
+                Dar de Alta un Nuevo Restaurante en Torrelodones
+              </h3>
+              <p className="text-xs text-slate-400">
+                Crea el perfil del restaurante y sus credenciales de acceso para el dueño.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Nombre del Restaurante *</label>
+                <input
+                  type="text"
+                  value={newRestName}
+                  onChange={(e) => setNewRestName(e.target.value)}
+                  placeholder="Ej: Taberna El Guadarrama"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Eslogan / Frase</label>
+                <input
+                  type="text"
+                  value={newRestTagline}
+                  onChange={(e) => setNewRestTagline(e.target.value)}
+                  placeholder="Ej: Cocina de montaña y tapas de autor"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Zona en Torrelodones</label>
+                <select
+                  value={newRestZone}
+                  onChange={(e) => setNewRestZone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                >
+                  <option value="Torrelodones Pueblo">Torrelodones Pueblo</option>
+                  <option value="Torrelodones Colonia">Torrelodones Colonia</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Tipo de Cocina</label>
+                <input
+                  type="text"
+                  value={newRestCuisine}
+                  onChange={(e) => setNewRestCuisine(e.target.value)}
+                  placeholder="Ej: Asador, Tapas, Pizzería..."
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Teléfono de Reservas</label>
+                <input
+                  type="text"
+                  value={newRestPhone}
+                  onChange={(e) => setNewRestPhone(e.target.value)}
+                  placeholder="+34 918 00 00 00"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">WhatsApp de Reservas</label>
+                <input
+                  type="text"
+                  value={newRestWhatsApp}
+                  onChange={(e) => setNewRestWhatsApp(e.target.value)}
+                  placeholder="+34 600 000 000"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-300 mb-1">Dirección Exacta</label>
+                <input
+                  type="text"
+                  value={newRestAddress}
+                  onChange={(e) => setNewRestAddress(e.target.value)}
+                  placeholder="Ej: Calle Real, 25, 28250 Torrelodones"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-torre-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                <label className="block text-xs font-black text-amber-400">
+                  🔑 Contraseña Inicial para el Hostelero
+                </label>
+                <input
+                  type="text"
+                  value={newRestOwnerPass}
+                  onChange={(e) => setNewRestOwnerPass(e.target.value)}
+                  placeholder="Ej: Guadarrama2026!"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                  required
+                />
+                <p className="text-[10px] text-slate-400">
+                  El usuario de acceso será generado automáticamente como el nombre simplificado (ej: <code className="text-amber-300">taberna-el-guadarrama</code>).
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-2xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-black shadow-lg shadow-blue-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Check className="w-4 h-4 text-oro-400" />
+              <span>Dar de Alta Restaurante en Base de Datos</span>
+            </button>
+          </form>
+        )}
+
+        {/* TAB 4: LEADS INBOX */}
+        {adminTab === 'leads' && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+              Solicitudes Recibidas desde la Landing de Ventas
+            </h3>
+
+            {leadsList.length === 0 ? (
+              <div className="p-8 rounded-3xl bg-slate-800/60 border border-slate-700 text-center space-y-2">
+                <Briefcase className="w-8 h-8 text-slate-600 mx-auto" />
+                <h4 className="font-bold text-xs text-slate-300">No hay solicitudes pendientes</h4>
+                <p className="text-[11px] text-slate-500">Los dueños que soliciten unirse en gastrotorre.vercel.app/ventas aparecerán aquí.</p>
+              </div>
+            ) : (
+              leadsList.map((lead) => (
+                <div
+                  key={lead.id}
+                  className="bg-slate-800/90 border border-slate-700 p-4 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-white">{lead.restaurantName}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300">
+                        {lead.plan}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Contacto: <strong className="text-slate-200">{lead.contactName}</strong> • Tel: {lead.phone} • Zona: {lead.zone}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hola ${lead.contactName}, te escribo de GastroTorre respecto a tu solicitud para dar de alta ${lead.restaurantName}. ¿Cuándo te viene bien que hablemos?`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Contactar WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* PASSWORD RESET MODAL */}
+        {editingUserId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+            <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 className="text-sm font-black text-white">Cambiar Contraseña de Cliente</h3>
+                <button
+                  onClick={() => setEditingUserId(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePasswordChangeSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Nueva Contraseña para este Hostelero:
+                  </label>
+                  <input
+                    type="text"
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    placeholder="Escribe la nueva contraseña..."
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUserId(null)}
+                    className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all"
+                  >
+                    Guardar Clave
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* CREATE NEW HOSTELERO ACCOUNT MODAL */}
+        {showNewAccountModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+            <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 className="text-sm font-black text-white">Crear Nueva Cuenta de Hostelero</h3>
+                <button
+                  onClick={() => setShowNewAccountModal(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateAccountSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Restaurante Asignado *</label>
+                  <select
+                    value={newAccRestSlug}
+                    onChange={(e) => setNewAccRestSlug(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-torre-500"
+                  >
+                    {restaurants.map((r) => (
+                      <option key={r.slug} value={r.slug}>
+                        {r.name} ({r.zone})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Email de Acceso *</label>
+                  <input
+                    type="email"
+                    value={newAccEmail}
+                    onChange={(e) => setNewAccEmail(e.target.value)}
+                    placeholder="dueno@restaurante.es"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-torre-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Usuario Corto *</label>
+                  <input
+                    type="text"
+                    value={newAccUsername}
+                    onChange={(e) => setNewAccUsername(e.target.value)}
+                    placeholder="ej: jarales"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-torre-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Contraseña *</label>
+                  <input
+                    type="text"
+                    value={newAccPass}
+                    onChange={(e) => setNewAccPass(e.target.value)}
+                    placeholder="ClaveSecreta2026!"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-torre-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAccountModal(false)}
+                    className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="py-2.5 rounded-xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-black transition-all"
+                  >
+                    Crear Cuenta
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // VIEW 3: DEDICATED HOSTELERO DASHBOARD (IF currentUser.role === 'owner')
+  // ==========================================================================
   return (
     <div className="space-y-4 px-4 py-5 bg-slate-50 min-h-screen">
-      {/* Top Admin Branding & Cloud Status Card */}
+      {/* Top Admin Branding Card */}
       <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 text-white p-5 rounded-3xl shadow-float border border-slate-700/80 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -371,15 +1343,10 @@ export default function AdminPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase font-bold text-oro-400 tracking-wider">
-                  Panel de Hosteleros
+                  Panel de {currentRestaurant.name}
                 </span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                  isCloudConnected 
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                }`}>
-                  <Database className="w-2.5 h-2.5" />
-                  <span>{isCloudConnected ? 'Supabase PostgreSQL Cloud' : 'Base de Datos Local'}</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  🟢 Sesión Activa
                 </span>
               </div>
               <h1 className="text-base font-black text-white leading-tight">
@@ -388,7 +1355,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <Link
               href={`/restaurante/${currentRestaurant.slug}`}
               target="_blank"
@@ -397,31 +1364,14 @@ export default function AdminPage() {
               <Eye className="w-3.5 h-3.5 text-oro-400" />
               <span>Ver Carta en Vivo</span>
             </Link>
-          </div>
-        </div>
 
-        {/* Hostelero account selector for pilot tests */}
-        <div className="pt-3 border-t border-slate-800 space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
-            <span>Restaurante activo:</span>
-            <span className="text-oro-400 font-bold">Sesión: {currentRestaurant.name}</span>
-          </div>
-          <div className="relative">
-            <select
-              value={selectedRestId || currentRestaurant.id}
-              onChange={(e) => {
-                setSelectedRestId(e.target.value);
-                switchHosteleroUser(e.target.value);
-              }}
-              className="w-full bg-slate-800/90 border border-slate-700 text-white text-xs font-bold rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-torre-500 transition-all appearance-none cursor-pointer"
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-rose-500/30 text-slate-300 hover:text-rose-300 transition-colors"
+              title="Cerrar Sesión"
             >
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({r.cuisine}) — {r.zone}
-                </option>
-              ))}
-            </select>
-            <ChevronRight className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none rotate-90" />
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -512,18 +1462,6 @@ export default function AdminPage() {
           <QrCode className="w-3.5 h-3.5 text-oro-400" />
           <span>QR</span>
         </button>
-
-        <button
-          onClick={() => setActiveTab('help')}
-          className={`flex-1 min-w-[60px] py-2.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
-            activeTab === 'help'
-              ? 'bg-torre-700 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <HelpCircle className="w-3.5 h-3.5 text-oro-400" />
-          <span>Guía</span>
-        </button>
       </div>
 
       {/* TAB 1: MENU & DISHES */}
@@ -542,203 +1480,167 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {currentRestaurant.menu.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-torre-50 text-torre-600 flex items-center justify-center mx-auto">
-                <Layers className="w-6 h-6 text-torre-600" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900">Aún no hay secciones en tu carta</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Crea tu primera categoría (ej: Entrantes de la Casa, Postres Artesanos) para empezar a añadir platos.</p>
-              </div>
-              <button
-                onClick={() => setShowAddCategoryModal(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-bold shadow-md shadow-blue-600/20"
-              >
-                <FolderPlus className="w-4 h-4 text-oro-400" />
-                <span>Crear Primera Sección</span>
-              </button>
-            </div>
-          ) : (
-            currentRestaurant.menu.map((category) => (
-              <div
-                key={category.id}
-                className="bg-white rounded-3xl border border-slate-200 shadow-soft p-4 space-y-3.5"
-              >
-                {/* Category Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-black text-slate-900">{category.name}</h3>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Seguro que deseas eliminar la sección "${category.name}" y todos sus platos asociados?`)) {
-                            deleteCategory(currentRestaurant.id, category.id);
-                            triggerToast('Sección eliminada');
-                          }
-                        }}
-                        className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors"
-                        title="Eliminar esta sección"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    {category.description && (
-                      <p className="text-[11px] text-slate-500">{category.description}</p>
-                    )}
+          {currentRestaurant.menu.map((category) => (
+            <div
+              key={category.id}
+              className="bg-white rounded-3xl border border-slate-200 shadow-soft p-4 space-y-3.5"
+            >
+              {/* Category Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-slate-900">{category.name}</h3>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`¿Seguro que deseas eliminar la sección "${category.name}"?`)) {
+                          deleteCategory(currentRestaurant.id, category.id);
+                          triggerToast('Sección eliminada');
+                        }
+                      }}
+                      className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors"
+                      title="Eliminar sección"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-
-                  <button
-                    onClick={() => handleOpenAddDish(category.id)}
-                    className="flex items-center gap-1 text-xs font-bold text-torre-600 hover:text-torre-700 bg-torre-50 hover:bg-torre-100 px-3 py-1.5 rounded-xl border border-torre-200/60 transition-all active:scale-95"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Añadir Plato</span>
-                  </button>
-                </div>
-
-                {/* Dishes List */}
-                <div className="space-y-2.5">
-                  {category.dishes.length === 0 ? (
-                    <div className="text-center py-5 border border-dashed border-slate-200 rounded-2xl bg-slate-50/60">
-                      <p className="text-xs text-slate-500 font-medium">Esta sección está vacía.</p>
-                      <button
-                        onClick={() => handleOpenAddDish(category.id)}
-                        className="mt-1 text-xs font-bold text-torre-600 hover:underline"
-                      >
-                        + Añadir el primer plato
-                      </button>
-                    </div>
-                  ) : (
-                    category.dishes.map((dish) => (
-                      <div
-                        key={dish.id}
-                        className={`p-3 rounded-2xl border transition-all ${
-                          dish.isAvailable
-                            ? 'bg-white border-slate-200/80 shadow-xs'
-                            : 'bg-slate-100/80 border-slate-200 opacity-60'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Dish Photo Thumbnail & trigger */}
-                          <div
-                            onClick={() =>
-                              setEditingPhotoDish({
-                                dishId: dish.id,
-                                categoryId: category.id,
-                                dishName: dish.name,
-                                currentImage: dish.image,
-                              })
-                            }
-                            className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200/80 cursor-pointer group hover:ring-2 hover:ring-torre-500 transition-all"
-                            title="Haz clic para cambiar la fotografía de este plato"
-                          >
-                            {dish.image ? (
-                              <img
-                                src={dish.image}
-                                alt={dish.name}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50">
-                                <Camera className="w-5 h-5" />
-                                <span className="text-[8px] font-bold mt-0.5">+ Foto</span>
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                              <Camera className="w-4 h-4 text-white" />
-                            </div>
-                          </div>
-
-                          {/* Dish Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 truncate">
-                                <h4 className="text-xs font-bold text-slate-900 truncate">
-                                  {dish.name}
-                                </h4>
-                                {dish.isSpecialty && (
-                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">
-                                    ⭐ Estrella
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-xs font-black text-torre-700 shrink-0">
-                                {dish.price.toFixed(2)} €
-                              </span>
-                            </div>
-
-                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                              {dish.description || 'Sin descripción'}
-                            </p>
-
-                            {/* Allergens & Quick Badges */}
-                            <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                              {dish.allergens && dish.allergens.length > 0 ? (
-                                dish.allergens.map((alg) => (
-                                  <span
-                                    key={alg}
-                                    className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 uppercase"
-                                  >
-                                    {alg}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-[9px] text-slate-400 italic">Sin alérgenos marcados</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons Row */}
-                        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 text-xs">
-                          {/* Toggle Availability Button */}
-                          <button
-                            onClick={() => toggleDishAvailability(currentRestaurant.id, category.id, dish.id)}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-                              dish.isAvailable
-                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
-                                : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                dish.isAvailable ? 'bg-emerald-500' : 'bg-rose-500'
-                              }`}
-                            ></span>
-                            <span>{dish.isAvailable ? 'Disponible' : 'Agotado (Ocultar)'}</span>
-                          </button>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleOpenEditDish(category.id, dish)}
-                              className="text-slate-600 hover:text-torre-600 font-bold text-[11px] flex items-center gap-1 p-1 hover:bg-slate-100 rounded-lg transition-colors"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Editar</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`¿Eliminar "${dish.name}" de la carta?`)) {
-                                  deleteDish(currentRestaurant.id, category.id, dish.id);
-                                  triggerToast('Plato eliminado');
-                                }
-                              }}
-                              className="text-slate-400 hover:text-rose-600 p-1 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Eliminar plato"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                  {category.description && (
+                    <p className="text-[11px] text-slate-500">{category.description}</p>
                   )}
                 </div>
+
+                <button
+                  onClick={() => handleOpenAddDish(category.id)}
+                  className="flex items-center gap-1 text-xs font-bold text-torre-600 hover:text-torre-700 bg-torre-50 hover:bg-torre-100 px-3 py-1.5 rounded-xl border border-torre-200/60 transition-all active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Añadir Plato</span>
+                </button>
               </div>
-            ))
-          )}
+
+              {/* Dishes List */}
+              <div className="space-y-2.5">
+                {category.dishes.map((dish) => (
+                  <div
+                    key={dish.id}
+                    className={`p-3 rounded-2xl border transition-all ${
+                      dish.isAvailable
+                        ? 'bg-white border-slate-200/80 shadow-xs'
+                        : 'bg-slate-100/80 border-slate-200 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        onClick={() =>
+                          setEditingPhotoDish({
+                            dishId: dish.id,
+                            categoryId: category.id,
+                            dishName: dish.name,
+                            currentImage: dish.image,
+                          })
+                        }
+                        className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200/80 cursor-pointer group hover:ring-2 hover:ring-torre-500 transition-all"
+                        title="Cambiar foto del plato"
+                      >
+                        {dish.image ? (
+                          <img
+                            src={dish.image}
+                            alt={dish.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50">
+                            <Camera className="w-5 h-5" />
+                            <span className="text-[8px] font-bold mt-0.5">+ Foto</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <Camera className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <h4 className="text-xs font-bold text-slate-900 truncate">
+                              {dish.name}
+                            </h4>
+                            {dish.isSpecialty && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">
+                                ⭐ Estrella
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs font-black text-torre-700 shrink-0">
+                            {dish.price.toFixed(2)} €
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                          {dish.description || 'Sin descripción'}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          {dish.allergens && dish.allergens.length > 0 ? (
+                            dish.allergens.map((alg) => (
+                              <span
+                                key={alg}
+                                className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 uppercase"
+                              >
+                                {alg}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] text-slate-400 italic">Sin alérgenos marcados</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 text-xs">
+                      <button
+                        onClick={() => toggleDishAvailability(currentRestaurant.id, category.id, dish.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                          dish.isAvailable
+                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
+                            : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            dish.isAvailable ? 'bg-emerald-500' : 'bg-rose-500'
+                          }`}
+                        ></span>
+                        <span>{dish.isAvailable ? 'Disponible' : 'Agotado (Ocultar)'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditDish(category.id, dish)}
+                          className="text-slate-600 hover:text-torre-600 font-bold text-[11px] flex items-center gap-1 p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Eliminar "${dish.name}" de la carta?`)) {
+                              deleteDish(currentRestaurant.id, category.id, dish.id);
+                              triggerToast('Plato eliminado');
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-600 p-1 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Eliminar plato"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -782,30 +1684,12 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-            {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setResFilter(st)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all ${
-                  resFilter === st
-                    ? 'bg-torre-700 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                {st === 'all' ? 'Todas' : st === 'pending' ? 'Pendientes' : st === 'confirmed' ? 'Confirmadas' : st === 'completed' ? 'Completadas' : 'Canceladas'}
-              </button>
-            ))}
-          </div>
-
-          {/* Reservations List */}
           <div className="space-y-3">
             {filteredReservations.length === 0 ? (
               <div className="p-8 rounded-3xl bg-white border border-slate-200 text-center space-y-2">
                 <Calendar className="w-8 h-8 text-slate-300 mx-auto" />
-                <h4 className="font-bold text-xs text-slate-700">No hay reservas con este filtro</h4>
-                <p className="text-[11px] text-slate-400">Las solicitudes de mesa recibidas desde la web aparecerán aquí automáticamente.</p>
+                <h4 className="font-bold text-xs text-slate-700">No hay reservas registradas</h4>
+                <p className="text-[11px] text-slate-400">Las solicitudes de mesa recibidas aparecerán aquí en vivo.</p>
               </div>
             ) : (
               filteredReservations.map((res) => (
@@ -863,12 +1747,11 @@ export default function AdminPage() {
 
                   {res.specialNotes && (
                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                      <span className="font-bold text-slate-700">Nota del cliente: </span>
+                      <span className="font-bold text-slate-700">Nota: </span>
                       {res.specialNotes}
                     </div>
                   )}
 
-                  {/* Actions Row */}
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
                     {res.status === 'pending' && (
                       <button
@@ -887,26 +1770,12 @@ export default function AdminPage() {
                       <button
                         onClick={() => {
                           updateReservationStatus(res.id, 'completed');
-                          triggerToast('Mesa marcada como completada');
+                          triggerToast('Mesa marcada como sentada');
                         }}
                         className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
                       >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Mesa Sentada</span>
-                      </button>
-                    )}
-
-                    {res.status !== 'cancelled' && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm('¿Deseas cancelar esta reserva?')) {
-                            updateReservationStatus(res.id, 'cancelled');
-                            triggerToast('Reserva cancelada');
-                          }
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-bold transition-all"
-                      >
-                        Cancelar
                       </button>
                     )}
                   </div>
@@ -954,7 +1823,7 @@ export default function AdminPage() {
               rows={3}
               value={dailyMenuFirstCourses}
               onChange={(e) => setDailyMenuFirstCourses(e.target.value)}
-              placeholder="Ej: Salmorejo cordobés con jamón ibérico&#10;Ensaladilla rusa casera con ventresca"
+              placeholder="Ej: Salmorejo cordobés con jamón ibérico"
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
             />
           </div>
@@ -965,7 +1834,7 @@ export default function AdminPage() {
               rows={3}
               value={dailyMenuSecondCourses}
               onChange={(e) => setDailyMenuSecondCourses(e.target.value)}
-              placeholder="Ej: Entrecot a la brasa con patatas panadera&#10;Merluza de pincho a la romana"
+              placeholder="Ej: Entrecot a la brasa con patatas panadera"
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
             />
           </div>
@@ -976,7 +1845,7 @@ export default function AdminPage() {
               rows={2}
               value={dailyMenuDesserts}
               onChange={(e) => setDailyMenuDesserts(e.target.value)}
-              placeholder="Ej: Tarta de queso casera&#10;Flan de huevo con nata"
+              placeholder="Ej: Tarta de queso casera"
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
             />
           </div>
@@ -1009,7 +1878,7 @@ export default function AdminPage() {
               <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
                 <span className="text-[11px] text-slate-300 block">Lecturas de Carta</span>
                 <span className="text-2xl font-black text-white block mt-0.5">{stats.monthlyViews}</span>
-                <span className="text-[10px] text-slate-400">Escaneos QR y visitas web</span>
+                <span className="text-[10px] text-slate-400">Escaneos QR y visitas</span>
               </div>
 
               <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
@@ -1017,33 +1886,6 @@ export default function AdminPage() {
                 <span className="text-2xl font-black text-oro-400 block mt-0.5">{stats.monthlyBookings}</span>
                 <span className="text-[10px] text-slate-400">Llamadas y WhatsApp directos</span>
               </div>
-            </div>
-          </div>
-
-          {/* Top Dishes Ranking */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3">
-            <h4 className="font-black text-sm text-slate-900 flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-oro-500" />
-              <span>Platos Más Vistos de tu Carta</span>
-            </h4>
-
-            <div className="space-y-2.5 pt-1">
-              {stats.topDishes.map((dish, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-slate-800 truncate pr-2">
-                      {idx + 1}. {dish.name}
-                    </span>
-                    <span className="text-torre-700 shrink-0 font-black">{dish.views} vistas</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-torre-600 to-oro-500 rounded-full"
-                      style={{ width: `${Math.min(100, (dish.views / (stats.topDishes[0]?.views || 1)) * 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -1054,7 +1896,7 @@ export default function AdminPage() {
         <form onSubmit={handleSaveInfo} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4">
           <div className="border-b border-slate-100 pb-2">
             <h3 className="text-sm font-black text-slate-900">Datos del Restaurante</h3>
-            <p className="text-[11px] text-slate-500">Información visible para los comensales y reservas.</p>
+            <p className="text-[11px] text-slate-500">Información visible para los comensales.</p>
           </div>
 
           <div>
@@ -1081,10 +1923,7 @@ export default function AdminPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <Phone className="w-3 h-3 text-slate-500" />
-                <span>Teléfono</span>
-              </label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
               <input
                 type="text"
                 name="phone"
@@ -1093,10 +1932,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <MessageCircle className="w-3 h-3 text-emerald-600" />
-                <span>WhatsApp</span>
-              </label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp</label>
               <input
                 type="text"
                 name="whatsapp"
@@ -1107,44 +1943,13 @@ export default function AdminPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-torre-600" />
-              <span>Dirección en Torrelodones</span>
-            </label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Dirección</label>
             <input
               type="text"
               name="address"
               defaultValue={currentRestaurant.address}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Zona</label>
-              <select
-                name="zone"
-                defaultValue={currentRestaurant.zone}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-              >
-                <option value="Torrelodones Pueblo">Torrelodones Pueblo</option>
-                <option value="Torrelodones Colonia">Torrelodones Colonia</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                <span>Aforo / Capacidad</span>
-                <span className="text-[10px] text-slate-400">Comensales</span>
-              </label>
-              <input
-                type="number"
-                name="capacity"
-                defaultValue={currentRestaurant.capacity || ''}
-                placeholder="Ej: 85"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-              />
-            </div>
           </div>
 
           <button
@@ -1180,28 +1985,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 6: GUIDE & SUPPORT */}
-      {activeTab === 'help' && (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <HelpCircle className="w-5 h-5 text-torre-600" />
-            <h3 className="text-sm font-black text-slate-900">Soporte y Guía de GastroTorre</h3>
-          </div>
-
-          <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-              <h4 className="font-bold text-slate-900 mb-1">¿Cómo actualizar precios y platos?</h4>
-              <p>Ve a la pestaña <strong>Platos</strong>, toca sobre cualquier plato para editar su precio, descripción o fotografía.</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-              <h4 className="font-bold text-slate-900 mb-1">¿Cómo conectar tu Base de Datos Supabase (0 €)?</h4>
-              <p>Añade tus claves de Supabase en las variables de entorno <code className="bg-slate-200 px-1 py-0.5 rounded text-[10px]">NEXT_PUBLIC_SUPABASE_URL</code> y <code className="bg-slate-200 px-1 py-0.5 rounded text-[10px]">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> para activar la sincronización en la nube.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ADD CATEGORY MODAL */}
       {showAddCategoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -1224,20 +2007,9 @@ export default function AdminPage() {
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Ej: Postres Artesanos, Carnes a la Brasa..."
+                  placeholder="Ej: Postres Artesanos..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
                   required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Descripción corta (opcional)</label>
-                <input
-                  type="text"
-                  value={newCategoryDesc}
-                  onChange={(e) => setNewCategoryDesc(e.target.value)}
-                  placeholder="Ej: Elaborados a diario en nuestro obrador propio"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
                 />
               </div>
 
@@ -1285,7 +2057,7 @@ export default function AdminPage() {
                   type="text"
                   value={newDishName}
                   onChange={(e) => setNewDishName(e.target.value)}
-                  placeholder="Ej: Croquetas de Jamón Ibérico (6 uds)"
+                  placeholder="Ej: Croquetas de Jamón Ibérico"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
                   required
                 />
@@ -1322,21 +2094,9 @@ export default function AdminPage() {
                   rows={2}
                   value={newDishDesc}
                   onChange={(e) => setNewDishDesc(e.target.value)}
-                  placeholder="Ej: Con bechamel fluida, rebozado panko y jamón de bellota..."
+                  placeholder="Ingredientes principales..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
                 />
-              </div>
-
-              <div className="flex items-center gap-4 pt-1">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newDishSpecialty}
-                    onChange={(e) => setNewDishSpecialty(e.target.checked)}
-                    className="rounded text-torre-600 focus:ring-torre-500"
-                  />
-                  <span>⭐ Plato Estrella / Especialidad</span>
-                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-2">
@@ -1352,113 +2112,6 @@ export default function AdminPage() {
                   className="py-2.5 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95"
                 >
                   Guardar Plato
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MANUAL RESERVATION MODAL */}
-      {showAddResModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl space-y-4 border border-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <h3 className="text-sm font-black text-slate-900">Añadir Reserva Manual</h3>
-              <button
-                type="button"
-                onClick={() => setShowAddResModal(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateManualReservation} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nombre del cliente *</label>
-                <input
-                  type="text"
-                  value={resCustName}
-                  onChange={(e) => setResCustName(e.target.value)}
-                  placeholder="Ej: Ignacio Martínez"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono móvil *</label>
-                <input
-                  type="tel"
-                  value={resCustPhone}
-                  onChange={(e) => setResCustPhone(e.target.value)}
-                  placeholder="+34 600 000 000"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Fecha</label>
-                  <input
-                    type="date"
-                    value={resDate}
-                    onChange={(e) => setResDate(e.target.value)}
-                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Hora</label>
-                  <input
-                    type="text"
-                    value={resTime}
-                    onChange={(e) => setResTime(e.target.value)}
-                    placeholder="14:30"
-                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Personas</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={resPax}
-                    onChange={(e) => setResPax(e.target.value)}
-                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Notas especiales (opcional)</label>
-                <input
-                  type="text"
-                  value={resNotes}
-                  onChange={(e) => setResNotes(e.target.value)}
-                  placeholder="Ej: Terraza, trona para bebé..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddResModal(false)}
-                  className="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95"
-                >
-                  Confirmar Mesa
                 </button>
               </div>
             </form>
@@ -1483,22 +2136,6 @@ export default function AdminPage() {
           isOpen={isQrOpen}
           onClose={() => setIsQrOpen(false)}
           restaurant={currentRestaurant}
-        />
-      )}
-
-      {/* Join GastroTorre Modal */}
-      {isJoinOpen && (
-        <JoinGastroTorreModal
-          isOpen={isJoinOpen}
-          onClose={() => setIsJoinOpen(false)}
-        />
-      )}
-
-      {/* Dossier Commercial Modal */}
-      {isDossierOpen && (
-        <DossierModal
-          isOpen={isDossierOpen}
-          onClose={() => setIsDossierOpen(false)}
         />
       )}
     </div>

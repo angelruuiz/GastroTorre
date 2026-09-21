@@ -18,11 +18,26 @@ export function getWeeklyRestaurant(restaurants: Restaurant[]): Restaurant {
 /**
  * Check if the restaurant is currently open based on current Spanish time
  */
-export function getOpenStatus(schedule: { days: string; lunch: string; dinner?: string }): {
+export function getOpenStatus(schedule: { 
+  days: string; 
+  lunch: string; 
+  dinner?: string;
+  isTemporarilyClosed?: boolean;
+  closedReason?: string;
+}): {
   isOpen: boolean;
   label: string;
   badgeColor: string;
 } {
+  // If the owner has marked the restaurant as temporarily closed (e.g. for personal matters or staff rest)
+  if (schedule.isTemporarilyClosed) {
+    return {
+      isOpen: false,
+      label: schedule.closedReason?.trim() || 'Cerrado por asuntos propios',
+      badgeColor: 'text-rose-900 dark:text-rose-200 bg-rose-100 dark:bg-rose-950/80 border-rose-300 dark:border-rose-700/80',
+    };
+  }
+
   const now = new Date();
   const day = now.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
   const currentMinutes = now.getHours() * 60 + now.getMinutes();

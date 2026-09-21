@@ -296,7 +296,7 @@ export async function POST(req: NextRequest) {
 
               await sendMessage(
                 chatId,
-                `✅ *¡Bienvenido, ${senderName}! Tu cuenta está vinculada a ${cfg.name}.*\n\nPuedes enviarme notas de voz, mensajes de texto o fotos de tus platos en cualquier momento. El servicio funciona 24/7 en la nube.`
+                `✅ *¡Bienvenido, ${senderName}! Tu cuenta está vinculada a ${cfg.name}.*\n\nPuedes enviarme mensajes de texto con los cambios que necesites (ej: _"Sube las croquetas a 14.50€"_) o fotos de tus platos en cualquier momento. El servicio funciona 24/7 en la nube.`
               );
               return NextResponse.json({ ok: true });
             }
@@ -328,10 +328,13 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Detección de Nota de Voz
-      let voiceNoteDuration = 0;
+      // Rechazar Notas de Voz de forma proactiva para evitar errores por ruido ambiental
       if (msg.voice || msg.audio) {
-        voiceNoteDuration = (msg.voice || msg.audio)?.duration || 0;
+        await sendMessage(
+          chatId,
+          `✍️ *Por favor, envía tu solicitud por mensaje de texto escrito o foto.*\n\nPara garantizar la **máxima precisión y exactitud en los precios de tu carta** (evitando errores causados por ruido de cocina o interferencias), procesamos las solicitudes en formato texto.\n\n💡 *Ejemplo fácil:* _"Sube el chuletón a 75€ y marca la tarta de queso como agotada hoy"_.`
+        );
+        return NextResponse.json({ ok: true });
       }
 
       // Buscar vinculación existente o fallback para admin
@@ -353,9 +356,7 @@ export async function POST(req: NextRequest) {
       }
 
       const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
-      const summary = voiceNoteDuration > 0
-        ? `• 🎙️ *Nota de Voz del Hostelero:* (${voiceNoteDuration} segundos)\n• 💬 _Solicitud de actualización recibida por audio_`
-        : `• 💬 *Petición:* "${text || '📸 Foto adjunta'}"`;
+      const summary = `• 💬 *Petición:* "${text || '📸 Foto adjunta'}"`;
 
       // Avisar al hostelero
       await sendMessage(
@@ -370,7 +371,7 @@ export async function POST(req: NextRequest) {
 🏠 *Restaurante:* ${binding.restaurantName} (✅ *Oficial*)
 👤 *Hostelero:* ${username} (ID: \`${chatId}\`)
 💬 *Mensaje:*
-_${text || (voiceNoteDuration > 0 ? `🎙️ [Nota de voz de ${voiceNoteDuration}s]` : '📸 [Foto enviada]')}_
+_${text || '📸 [Foto enviada por hostelero]'}_
 
 🤖 *Cambios a aplicar en tiempo real:*
 ${summary}

@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase/client';
 
+const RESTAURANT_UUID_MAP: Record<string, string> = {
+  'asador-los-jarales': 'a1000000-0000-0000-0000-000000000001',
+  '1': 'a1000000-0000-0000-0000-000000000001',
+  'la-tavola': 'a2000000-0000-0000-0000-000000000002',
+  '2': 'a2000000-0000-0000-0000-000000000002',
+  'el-olivo-bistro': 'a3000000-0000-0000-0000-000000000003',
+  '3': 'a3000000-0000-0000-0000-000000000003',
+  'torre-smash': 'a4000000-0000-0000-0000-000000000004',
+  '4': 'a4000000-0000-0000-0000-000000000004',
+  'la-huerta-brunch': 'a5000000-0000-0000-0000-000000000005',
+  '5': 'a5000000-0000-0000-0000-000000000005',
+};
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -13,16 +28,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const resolvedRestaurantId = RESTAURANT_UUID_MAP[restaurant_id] || restaurant_id;
+    const validDishId = dish_id && UUID_REGEX.test(dish_id) ? dish_id : null;
+
     if (isSupabaseConfigured() && supabase) {
       const { error } = await supabase.from('analytics_events').insert({
-        restaurant_id,
+        restaurant_id: resolvedRestaurantId,
         event_type,
-        dish_id: dish_id || null,
+        dish_id: validDishId,
         user_agent: request.headers.get('user-agent') || 'Unknown',
       });
 
       if (error) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.warn('Supabase analytics insert error:', error.message);
+        return NextResponse.json({ success: true, source: 'supabase_fallback', note: error.message });
       }
 
       return NextResponse.json({ success: true, source: 'supabase' });

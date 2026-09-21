@@ -131,23 +131,13 @@ export default function AdminPage() {
   const [metricsPeriod, setMetricsPeriod] = useState<'30d' | 'weekend' | 'all'>('30d');
 
   // Hostelero tabs & modals state
-  const [activeTab, setActiveTab] = useState<'menu' | 'daily-menu' | 'reservations' | 'stats' | 'info' | 'qr' | 'help'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'daily-menu' | 'stats' | 'info' | 'qr' | 'help'>('menu');
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [savedMessage, setSavedMessage] = useState('¡Cambios guardados con éxito!');
   const [mounted, setMounted] = useState(false);
-
-  // Reservation filters
-  const [resFilter, setResFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
-  const [showAddResModal, setShowAddResModal] = useState(false);
-  const [resCustName, setResCustName] = useState('');
-  const [resCustPhone, setResCustPhone] = useState('');
-  const [resDate, setResDate] = useState(new Date().toISOString().split('T')[0]);
-  const [resTime, setResTime] = useState('14:30');
-  const [resPax, setResPax] = useState('2');
-  const [resNotes, setResNotes] = useState('');
 
   // Daily Menu state
   const [dailyMenuActive, setDailyMenuActive] = useState(false);
@@ -532,42 +522,12 @@ export default function AdminPage() {
     triggerToast('¡Menú del día actualizado y publicado!');
   };
 
-  const handleCreateManualReservation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resCustName || !resCustPhone) return;
-
-    await createReservation({
-      restaurantId: currentRestaurant.id,
-      customerName: resCustName,
-      customerPhone: resCustPhone,
-      reservationDate: resDate,
-      reservationTime: resTime,
-      partySize: parseInt(resPax) || 2,
-      status: 'confirmed',
-      specialNotes: resNotes.trim() || undefined,
-    });
-
-    setShowAddResModal(false);
-    setResCustName('');
-    setResCustPhone('');
-    setResNotes('');
-    triggerToast('¡Reserva añadida al libro de mesas!');
-  };
-
-  const currentReservations = reservations.filter((r) => r.restaurantId === currentRestaurant.id || r.restaurantId === currentRestaurant.slug);
-  const filteredReservations = currentReservations.filter((r) => {
-    if (resFilter === 'all') return true;
-    return r.status === resFilter;
-  });
-
-  const pendingCount = currentReservations.filter((r) => r.status === 'pending').length;
-
   // Rich computed metrics for the current restaurant
   const rawViews = currentRestaurant.stats?.monthlyViews || 1284;
   const qrScans = currentRestaurant.stats?.monthlyQrScans || Math.round(rawViews * 0.94);
   const webReads = currentRestaurant.stats?.monthlyWebReads || Math.round(rawViews * 0.06);
   const uniqueDin = currentRestaurant.stats?.uniqueVisitors || Math.round(rawViews * 0.72);
-  const callsCount = currentRestaurant.stats?.phoneCalls || (Math.round(rawViews * 0.064) + currentReservations.length);
+  const callsCount = currentRestaurant.stats?.phoneCalls || Math.round(rawViews * 0.068);
   const waCount = currentRestaurant.stats?.whatsappClicks || Math.round(rawViews * 0.128);
   const gpsCount = currentRestaurant.stats?.directionsClicks || Math.round(rawViews * 0.074);
   const revCount = currentRestaurant.stats?.googleReviewsClicks || Math.round(rawViews * 0.036);
@@ -616,7 +576,7 @@ export default function AdminPage() {
     monthlyQrScans: qrScans,
     monthlyWebReads: webReads,
     uniqueVisitors: uniqueDin,
-    monthlyBookings: currentReservations.length + callsCount + waCount,
+    monthlyBookings: callsCount + waCount,
     phoneCalls: callsCount,
     whatsappClicks: waCount,
     directionsClicks: gpsCount,
@@ -1530,7 +1490,7 @@ export default function AdminPage() {
                 </span>
               </div>
               <h1 className="text-base font-black text-white leading-tight">
-                Gestor de Carta, Reservas & QR
+                Gestor de Carta Digital, Menú del Día & QR
               </h1>
             </div>
           </div>
@@ -1576,23 +1536,6 @@ export default function AdminPage() {
         >
           <Utensils className="w-3.5 h-3.5 text-oro-400" />
           <span>Platos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('reservations')}
-          className={`flex-1 min-w-[85px] py-2.5 rounded-xl flex items-center justify-center gap-1 transition-all relative ${
-            activeTab === 'reservations'
-              ? 'bg-torre-700 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5 text-oro-400" />
-          <span>Reservas</span>
-          {pendingCount > 0 && (
-            <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center -ml-0.5">
-              {pendingCount}
-            </span>
-          )}
         </button>
 
         <button
@@ -1824,147 +1767,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB: RESERVATIONS INBOX */}
-      {activeTab === 'reservations' && (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-torre-950 to-slate-900 text-white p-5 rounded-3xl shadow-soft space-y-3 border border-torre-900/60">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-oro-400 uppercase tracking-wider block">
-                  Libro de Mesas Digital
-                </span>
-                <h3 className="text-base font-black text-white">
-                  Gestión de Reservas en Tiempo Real
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowAddResModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-bold shadow-sm transition-all active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5 text-oro-400" />
-                <span>+ Nueva Mesa</span>
-              </button>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-              <div className="bg-white/10 p-2.5 rounded-2xl">
-                <span className="text-[10px] text-slate-300 block">Pendientes</span>
-                <span className="text-xl font-black text-amber-400">{pendingCount}</span>
-              </div>
-              <div className="bg-white/10 p-2.5 rounded-2xl">
-                <span className="text-[10px] text-slate-300 block">Confirmadas</span>
-                <span className="text-xl font-black text-emerald-400">
-                  {currentReservations.filter((r) => r.status === 'confirmed').length}
-                </span>
-              </div>
-              <div className="bg-white/10 p-2.5 rounded-2xl">
-                <span className="text-[10px] text-slate-300 block">Total Registradas</span>
-                <span className="text-xl font-black text-white">{currentReservations.length}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {filteredReservations.length === 0 ? (
-              <div className="p-8 rounded-3xl bg-white border border-slate-200 text-center space-y-2">
-                <Calendar className="w-8 h-8 text-slate-300 mx-auto" />
-                <h4 className="font-bold text-xs text-slate-700">No hay reservas registradas</h4>
-                <p className="text-[11px] text-slate-400">Las solicitudes de mesa recibidas aparecerán aquí en vivo.</p>
-              </div>
-            ) : (
-              filteredReservations.map((res) => (
-                <div
-                  key={res.id}
-                  className="bg-white rounded-3xl border border-slate-200 p-4 shadow-soft space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-black text-slate-900">{res.customerName}</h4>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          res.status === 'confirmed'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : res.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800 animate-pulse'
-                            : res.status === 'completed'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {res.status === 'confirmed' ? 'Confirmada' : res.status === 'pending' ? 'Pendiente' : res.status === 'completed' ? 'Sentada' : 'Cancelada'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium mt-1">
-                        <span className="flex items-center gap-1 font-bold text-slate-700">
-                          <Clock className="w-3.5 h-3.5 text-torre-600" />
-                          {res.reservationDate} a las {res.reservationTime}
-                        </span>
-                        <span>•</span>
-                        <span className="font-bold text-torre-700 bg-torre-50 px-2 py-0.5 rounded-md">
-                          👥 {res.partySize} Comensales
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={`tel:${res.customerPhone}`}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                        title="Llamar al cliente"
-                      >
-                        <Phone className="w-4 h-4" />
-                      </a>
-                      <a
-                        href={`https://wa.me/${res.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hola ${res.customerName}, te confirmamos tu mesa para ${res.partySize} comensales en ${currentRestaurant.name} el día ${res.reservationDate} a las ${res.reservationTime}. ¡Te esperamos!`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
-                        title="Enviar confirmación WhatsApp"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-
-                  {res.specialNotes && (
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                      <span className="font-bold text-slate-700">Nota: </span>
-                      {res.specialNotes}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
-                    {res.status === 'pending' && (
-                      <button
-                        onClick={() => {
-                          updateReservationStatus(res.id, 'confirmed');
-                          triggerToast('Reserva confirmada');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Aceptar Reserva</span>
-                      </button>
-                    )}
-
-                    {res.status === 'confirmed' && (
-                      <button
-                        onClick={() => {
-                          updateReservationStatus(res.id, 'completed');
-                          triggerToast('Mesa marcada como sentada');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Mesa Sentada</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
 
       {/* TAB 2: DAILY MENU */}
       {activeTab === 'daily-menu' && (

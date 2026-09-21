@@ -272,7 +272,7 @@ export default function RestaurantDetailPage() {
                   {/* WhatsApp */}
                   {hasWhatsapp && (
                     <a
-                      href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20quisiera%20reservar%20una%20mesa%20en%20${encodeURIComponent(restaurant.name)}`}
+                      href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20he%20visto%20vuestra%20carta%20en%20GastroTorre%20y%20quer%C3%ADa%20haceros%20una%20consulta%20sobre%20${encodeURIComponent(restaurant.name)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-center transition-all active:scale-95 shadow-sm"
@@ -437,13 +437,13 @@ export default function RestaurantDetailPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
             onClick={() => setSelectedDietFilter(null)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${
+            className={`px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 flex items-center gap-1.5 ${
               selectedDietFilter === null
-                ? 'bg-torre-700 text-white shadow-sm'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                ? 'bg-torre-600 text-white font-black border-2 border-torre-500 shadow-sm ring-2 ring-torre-400/40'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
             }`}
           >
-            <span>Ver toda la carta</span>
+            <span>🍽️ Toda la carta</span>
           </button>
 
           {DIET_FILTERS.map((filter) => {
@@ -452,14 +452,14 @@ export default function RestaurantDetailPage() {
               <button
                 key={filter.id}
                 onClick={() => setSelectedDietFilter(isSelected ? null : filter.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-torre-600 text-white shadow-sm ring-2 ring-torre-400/40'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                    ? 'bg-emerald-600 text-white font-black border-2 border-emerald-500 shadow-md shadow-emerald-600/20 ring-2 ring-emerald-400/50'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
                 }`}
               >
-                <span>{filter.emoji}</span>
-                <span>{filter.shortName}</span>
+                <span className="text-sm">{filter.emoji}</span>
+                <span className="text-slate-900 dark:text-white font-bold">{filter.shortName}</span>
               </button>
             );
           })}
@@ -467,15 +467,16 @@ export default function RestaurantDetailPage() {
 
         {/* Filter status banner if active */}
         {selectedDietFilter && (
-          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-2.5 rounded-xl text-xs flex items-center justify-between animate-fadeIn">
-            <span className="font-semibold text-amber-900 dark:text-amber-200">
-              Mostrando <strong className="font-bold">{matchingDishesCount}</strong> platos aptos para <strong className="font-bold">{currentFilterObj?.name}</strong>
+          <div className="bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-400 dark:border-emerald-600 p-3 rounded-2xl text-xs flex items-center justify-between shadow-sm animate-fadeIn">
+            <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>✅</span>
+              <span>Mostrando <strong className="text-emerald-700 dark:text-emerald-300 font-black">{matchingDishesCount}</strong> platos aptos para <strong className="text-emerald-700 dark:text-emerald-300 font-black">{currentFilterObj?.name}</strong></span>
             </span>
             <button
               onClick={() => setSelectedDietFilter(null)}
-              className="text-[11px] font-bold text-amber-800 dark:text-amber-300 underline ml-2"
+              className="text-xs font-black text-emerald-800 dark:text-emerald-200 hover:underline bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-lg shrink-0 border border-emerald-300 dark:border-emerald-700"
             >
-              Quitar filtro
+              Quitar filtro ✕
             </button>
           </div>
         )}
@@ -494,10 +495,10 @@ export default function RestaurantDetailPage() {
                   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
               }}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs transition-all shrink-0 ${
                 activeCategory === category.id
-                  ? 'bg-torre-700 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-torre-600 text-white font-black shadow-md border-2 border-torre-500'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
               }`}
             >
               {category.name}
@@ -555,27 +556,33 @@ export default function RestaurantDetailPage() {
                         {/* Specialty / Available / Diet Badges */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {dish.isSpecialty && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider border border-amber-200 dark:border-amber-700">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider border border-amber-300 dark:border-amber-800">
                               <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                               Especialidad
                             </span>
                           )}
 
                           {!dish.isAvailable && (
-                            <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 text-[10px] font-black uppercase border border-rose-200 dark:border-rose-700">
+                            <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/70 text-rose-950 dark:text-rose-200 text-[10px] font-black uppercase border border-rose-300 dark:border-rose-800">
                               Agotado hoy
                             </span>
                           )}
 
                           {dish.isVegan && (
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold border border-emerald-200 dark:border-emerald-700">
-                              Vegano 🌱
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
+                              🌱 Vegano 100%
                             </span>
                           )}
 
                           {dish.isGlutenFree && (
-                            <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 text-[10px] font-bold border border-amber-200 dark:border-amber-700">
-                              Sin Gluten 🌾❌
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
+                              ✅ Apto Celíacos (Sin Gluten)
+                            </span>
+                          )}
+
+                          {dish.isVegetarian && !dish.isVegan && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950/70 text-teal-950 dark:text-teal-200 text-[10px] font-bold border border-teal-300 dark:border-teal-800">
+                              🥗 Vegetariano
                             </span>
                           )}
                         </div>
@@ -590,12 +597,14 @@ export default function RestaurantDetailPage() {
                           {dish.description}
                         </p>
 
-                        {/* Allergens Row */}
+                        {/* Allergens Row with Clear Labeling */}
                         {dish.allergens && dish.allergens.length > 0 && (
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {dish.allergens.map((alg, idx) => (
-                              <AllergenBadge key={idx} type={alg} showText={true} />
-                            ))}
+                          <div className="pt-1.5">
+                            <div className="flex flex-wrap items-center gap-1">
+                              {dish.allergens.map((alg, idx) => (
+                                <AllergenBadge key={idx} type={alg} showText={true} prefix={true} />
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -741,12 +750,12 @@ export default function RestaurantDetailPage() {
               {OFFICIAL_ALLERGENS.map((alg) => (
                 <div
                   key={alg.id}
-                  className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start gap-2"
+                  className={`p-2.5 rounded-2xl border ${alg.bg} ${alg.border} flex items-start gap-2.5 transition-all`}
                 >
-                  <span className="text-lg shrink-0">{alg.emoji}</span>
+                  <span className="text-xl shrink-0 select-none">{alg.emoji}</span>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-white">{alg.shortName}</h5>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{alg.description}</p>
+                    <h5 className={`text-xs font-black ${alg.color}`}>{alg.name}</h5>
+                    <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight mt-0.5">{alg.description}</p>
                   </div>
                 </div>
               ))}

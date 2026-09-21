@@ -498,18 +498,22 @@ export class DatabaseService {
       localStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(list));
     }
 
-    if (isSupabaseConfigured() && supabase) {
+    if (this.isClient()) {
       try {
-        await supabase.from('leads_hosteleros').insert({
-          restaurant_name: lead.restaurantName,
-          contact_name: lead.contactName,
-          phone: lead.phone,
-          email: lead.email,
-          plan_interest: lead.plan,
-          zone: lead.zone,
+        await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurant_name: lead.restaurantName,
+            contact_name: lead.contactName,
+            phone: lead.phone,
+            email: lead.email,
+            plan_interest: lead.plan,
+            zone: lead.zone,
+          }),
         });
-      } catch (e) {
-        console.warn('Supabase lead insert failed:', e);
+      } catch (apiErr) {
+        console.warn('API /api/leads fetch error:', apiErr);
       }
     }
 

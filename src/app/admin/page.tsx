@@ -186,6 +186,25 @@ export default function AdminPage() {
       if (stored) {
         try { setLeadsList(JSON.parse(stored)); } catch {}
       }
+      // Fetch live leads from Supabase via /api/leads
+      fetch('/api/leads')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            const formatted: LeadRecord[] = data.data.map((d: any) => ({
+              id: d.id || `lead-${Date.now()}`,
+              restaurantName: d.restaurant_name,
+              contactName: d.contact_name,
+              phone: d.phone,
+              email: d.email || '',
+              plan: d.plan_interest || 'Plan Pro (59€/mes)',
+              zone: d.zone || 'Torrelodones Pueblo',
+              createdAt: d.created_at || new Date().toISOString(),
+            }));
+            setLeadsList(formatted);
+          }
+        })
+        .catch((e) => console.warn('Could not fetch server leads:', e));
     }
   }, []);
 

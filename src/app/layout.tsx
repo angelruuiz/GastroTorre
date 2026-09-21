@@ -5,16 +5,39 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://gastrotorre.vercel.app'),
   title: 'GastroTorre | Guía Gastronómica y Cartas Digitales de Torrelodones',
   description: 'Descubre los mejores restaurantes de Torrelodones (Pueblo y Colonia). Consulta sus cartas digitales con precios, fotos, alérgenos y reserva en 1 clic.',
   keywords: ['Torrelodones', 'Restaurantes Torrelodones', 'Dónde comer Torrelodones', 'Carta digital Torrelodones', 'GastroTorre', 'Torre a la Carta'],
   authors: [{ name: 'GastroTorre' }],
+  icons: {
+    icon: [
+      { url: '/logo-gastrotorre.jpeg', type: 'image/jpeg' },
+    ],
+    apple: [
+      { url: '/logo-gastrotorre.jpeg' },
+    ],
+  },
   openGraph: {
     title: 'GastroTorre — La Guía Gastronómica de Torrelodones',
-    description: 'Cartas digitales, fotos, precios actualizados y reservas directas de los restaurantes de Torrelodones.',
+    description: 'Cartas digitales, fotos, alérgenos, precios actualizados y reservas directas de los restaurantes de Torrelodones.',
     type: 'website',
     locale: 'es_ES',
     siteName: 'GastroTorre',
+    images: [
+      {
+        url: '/logo-gastrotorre.jpeg',
+        width: 800,
+        height: 800,
+        alt: 'GastroTorre - Guía Gastronómica y Cartas Digitales de Torrelodones',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'GastroTorre — Guía Gastronómica de Torrelodones',
+    description: 'Cartas digitales, fotos, precios actualizados y reservas directas de los restaurantes de Torrelodones.',
+    images: ['/logo-gastrotorre.jpeg'],
   },
 };
 

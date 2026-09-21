@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Upload, Link as LinkIcon, Image as ImageIcon, Check, Sparkles, Trash2 } from 'lucide-react';
+import { X, Upload, Link as LinkIcon, Image as ImageIcon, Check, Sparkles, Trash2, Zap } from 'lucide-react';
 import { FOOD_PHOTO_PRESETS } from '@/data/photoPresets';
+import { compressImageFile, CompressionResult } from '@/utils/imageCompressor';
 
 interface DishPhotoModalProps {
   isOpen: boolean;
@@ -21,17 +22,30 @@ export const DishPhotoModal: React.FC<DishPhotoModalProps> = ({
 }) => {
   const [photoUrl, setPhotoUrl] = useState<string>(currentImage || '');
   const [activeSource, setActiveSource] = useState<'upload' | 'url' | 'presets'>('upload');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState<CompressionResult | null>(null);
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        setIsCompressing(true);
+        const result = await compressImageFile(file, 1200, 1200, 0.82);
+        setPhotoUrl(result.dataUrl);
+        setCompressionInfo(result);
+      } catch (err) {
+        console.error('Error al comprimir foto:', err);
+        // Fallback standard read
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setIsCompressing(false);
+      }
     }
   };
 
@@ -42,6 +56,7 @@ export const DishPhotoModal: React.FC<DishPhotoModalProps> = ({
 
   const handleRemove = () => {
     onSavePhoto(undefined);
+    setCompressionInfo(null);
     onClose();
   };
 
@@ -69,7 +84,12 @@ export const DishPhotoModal: React.FC<DishPhotoModalProps> = ({
         {/* Live Photo Preview Box */}
         <div className="text-center space-y-2">
           <div className="relative mx-auto w-full h-40 bg-slate-100 rounded-2xl overflow-hidden border-2 border-dashed border-slate-300 shadow-inner flex items-center justify-center group">
-            {photoUrl ? (
+            {isCompressing ? (
+              <div className="flex flex-col items-center gap-2 text-torre-600 animate-pulse">
+                <Zap className="w-8 h-8 animate-bounce" />
+                <span className="text-xs font-black">Optimizando y Comprimiendo...</span>
+              </div>
+            ) : photoUrl ? (
               <img
                 src={photoUrl}
                 alt="Vista previa"
@@ -82,6 +102,18 @@ export const DishPhotoModal: React.FC<DishPhotoModalProps> = ({
               </div>
             )}
           </div>
+
+          {compressionInfo && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-2 rounded-xl text-[11px] text-emerald-900 dark:text-emerald-200 font-bold flex items-center justify-between animate-fadeIn">
+              <span className="flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Optimizada: {compressionInfo.originalSizeFormatted} ➔ <strong>{compressionInfo.compressedSizeFormatted}</strong></span>
+              </span>
+              <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md">
+                -{compressionInfo.savingsPercentage}%
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Source Switcher Tabs */}

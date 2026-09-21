@@ -222,10 +222,10 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => setSelectedFilter(cat.id as FilterCategory)}
-              className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
+              className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 ${
                 selectedFilter === cat.id
-                  ? 'bg-torre-700 text-white shadow-sm shadow-blue-500/30 scale-105'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  ? 'bg-torre-600 text-white font-black shadow-md border-2 border-torre-500 scale-105'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
               }`}
             >
               {cat.label}

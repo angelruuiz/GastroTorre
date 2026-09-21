@@ -35,21 +35,14 @@ export const Footer: React.FC = () => {
                 Consigue tu código QR inmutable para mesas, actualiza precios al instante y atrae a miles de vecinos y visitantes.
               </p>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="pt-1">
                 <button
                   onClick={() => setIsJoinOpen(true)}
-                  className="py-2.5 px-3 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 text-center"
+                  className="w-full py-3 px-4 rounded-2xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-black shadow-md shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 text-center"
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Solicitar Alta ✨</span>
+                  <UserPlus className="w-4 h-4 text-oro-300" />
+                  <span>Solicitar Alta de mi Restaurante ✨</span>
                 </button>
-
-                <Link
-                  href="/admin"
-                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all text-center flex items-center justify-center"
-                >
-                  Acceso Panel 🎛️
-                </Link>
               </div>
             </div>
           )}

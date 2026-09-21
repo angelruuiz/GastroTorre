@@ -533,7 +533,7 @@ export class DatabaseService {
   // --------------------------------------------------------------------------
   public static async trackEvent(
     restaurantId: string,
-    eventType: 'page_view' | 'qr_scan' | 'call_click' | 'whatsapp_click' | 'dish_view' | 'reservation_click',
+    eventType: 'page_view' | 'qr_scan' | 'call_click' | 'whatsapp_click' | 'dish_view' | 'reservation_click' | 'directions_click' | 'share_click' | 'google_review_click',
     dishId?: string
   ): Promise<void> {
     if (isSupabaseConfigured() && supabase) {
@@ -657,3 +657,5 @@ export class DatabaseService {
     this.setSessionUser(null);
   }
 }
+
+export const dbService = DatabaseService;

@@ -61,10 +61,25 @@ export interface Restaurant {
   menu: MenuCategory[];
   stats?: {
     monthlyViews: number;
+    monthlyQrScans?: number;
+    monthlyWebReads?: number;
+    uniqueVisitors?: number;
     monthlyBookings: number;
+    phoneCalls?: number;
+    whatsappClicks?: number;
+    directionsClicks?: number;
+    googleReviewsClicks?: number;
+    sharesCount?: number;
     weeklyGrowth: number;
-    topDishes: { name: string; views: number }[];
-    scansByDay: { day: string; count: number }[];
+    conversionRate?: number;
+    avgReadTimeSeconds?: number;
+    lunchServicePercent?: number;
+    dinnerServicePercent?: number;
+    mobileDevicePercent?: number;
+    estimatedRevenueEuros?: number;
+    topDishes: { name: string; views: number; category?: string; price?: number; percentage?: number }[];
+    scansByDay: { day: string; count: number; isPeak?: boolean }[];
+    popularFilters?: { filter: string; percentage: number }[];
   };
 }
 

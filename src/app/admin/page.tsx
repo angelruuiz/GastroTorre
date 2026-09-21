@@ -50,7 +50,14 @@ import {
   ShieldAlert,
   Building2,
   Briefcase,
-  UserPlus
+  UserPlus,
+  Smartphone,
+  Laptop,
+  Star,
+  Share2,
+  ArrowUpRight,
+  Award,
+  Leaf
 } from 'lucide-react';
 import { QRModal } from '@/components/QRModal';
 import { DishPhotoModal } from '@/components/DishPhotoModal';
@@ -119,6 +126,9 @@ export default function AdminPage() {
 
   // Leads list
   const [leadsList, setLeadsList] = useState<LeadRecord[]>([]);
+
+  // Metrics period filter state
+  const [metricsPeriod, setMetricsPeriod] = useState<'30d' | 'weekend' | 'all'>('30d');
 
   // Hostelero tabs & modals state
   const [activeTab, setActiveTab] = useState<'menu' | 'daily-menu' | 'reservations' | 'stats' | 'info' | 'qr' | 'help'>('menu');
@@ -552,23 +562,81 @@ export default function AdminPage() {
 
   const pendingCount = currentReservations.filter((r) => r.status === 'pending').length;
 
-  const stats = currentRestaurant.stats || {
-    monthlyViews: 480,
-    monthlyBookings: currentReservations.length + 28,
-    weeklyGrowth: 18,
-    topDishes: [
-      { name: currentRestaurant.menu[0]?.dishes[0]?.name || 'Plato Estrella', views: 195 },
-      { name: currentRestaurant.menu[0]?.dishes[1]?.name || 'Sugerencia del Chef', views: 140 },
-      { name: currentRestaurant.menu[1]?.dishes[0]?.name || 'Especialidad', views: 110 },
-    ],
-    scansByDay: [
-      { day: 'Lun', count: 18 },
-      { day: 'Mar', count: 35 },
-      { day: 'Mié', count: 48 },
-      { day: 'Jue', count: 62 },
-      { day: 'Vie', count: 115 },
-      { day: 'Sáb', count: 135 },
-      { day: 'Dom', count: 88 },
+  // Rich computed metrics for the current restaurant
+  const rawViews = currentRestaurant.stats?.monthlyViews || 1284;
+  const qrScans = currentRestaurant.stats?.monthlyQrScans || Math.round(rawViews * 0.94);
+  const webReads = currentRestaurant.stats?.monthlyWebReads || Math.round(rawViews * 0.06);
+  const uniqueDin = currentRestaurant.stats?.uniqueVisitors || Math.round(rawViews * 0.72);
+  const callsCount = currentRestaurant.stats?.phoneCalls || (Math.round(rawViews * 0.064) + currentReservations.length);
+  const waCount = currentRestaurant.stats?.whatsappClicks || Math.round(rawViews * 0.128);
+  const gpsCount = currentRestaurant.stats?.directionsClicks || Math.round(rawViews * 0.074);
+  const revCount = currentRestaurant.stats?.googleReviewsClicks || Math.round(rawViews * 0.036);
+  const shareCount = currentRestaurant.stats?.sharesCount || Math.round(rawViews * 0.03);
+  const totalActionsCount = callsCount + waCount + gpsCount + revCount + shareCount;
+  const conversionPct = ((totalActionsCount / rawViews) * 100).toFixed(1);
+  const estRevenue = Math.round(totalActionsCount * 14.8);
+  const paperSaved = Math.round(rawViews * 0.35);
+
+  // Compute top dishes dynamically from menu
+  const allCurrentDishes = currentRestaurant.menu?.flatMap((cat) => 
+    cat.dishes.map((d) => ({
+      name: d.name,
+      category: cat.name,
+      price: d.price,
+      image: d.image,
+      isSpecialty: d.isSpecialty,
+    }))
+  ) || [];
+
+  const topDishesList = (currentRestaurant.stats?.topDishes && currentRestaurant.stats.topDishes.length > 0)
+    ? currentRestaurant.stats.topDishes
+    : allCurrentDishes.slice(0, 5).map((d, idx) => {
+        const baseViews = Math.round(rawViews * (0.34 - idx * 0.06));
+        return {
+          name: d.name,
+          category: d.category,
+          price: d.price,
+          views: baseViews,
+          percentage: Math.round((baseViews / rawViews) * 100),
+        };
+      });
+
+  const weeklyScansList = currentRestaurant.stats?.scansByDay || [
+    { day: 'Lun', count: Math.round(rawViews * 0.04), isPeak: false },
+    { day: 'Mar', count: Math.round(rawViews * 0.06), isPeak: false },
+    { day: 'Mié', count: Math.round(rawViews * 0.09), isPeak: false },
+    { day: 'Jue', count: Math.round(rawViews * 0.14), isPeak: false },
+    { day: 'Vie', count: Math.round(rawViews * 0.25), isPeak: true },
+    { day: 'Sáb', count: Math.round(rawViews * 0.28), isPeak: true },
+    { day: 'Dom', count: Math.round(rawViews * 0.14), isPeak: true },
+  ];
+
+  const stats = {
+    monthlyViews: rawViews,
+    monthlyQrScans: qrScans,
+    monthlyWebReads: webReads,
+    uniqueVisitors: uniqueDin,
+    monthlyBookings: currentReservations.length + callsCount + waCount,
+    phoneCalls: callsCount,
+    whatsappClicks: waCount,
+    directionsClicks: gpsCount,
+    googleReviewsClicks: revCount,
+    sharesCount: shareCount,
+    weeklyGrowth: currentRestaurant.stats?.weeklyGrowth || 24,
+    conversionRate: parseFloat(conversionPct),
+    avgReadTimeSeconds: 165,
+    lunchServicePercent: 58,
+    dinnerServicePercent: 42,
+    mobileDevicePercent: 96.8,
+    estimatedRevenueEuros: estRevenue,
+    paperSaved: paperSaved,
+    topDishes: topDishesList,
+    scansByDay: weeklyScansList,
+    popularFilters: [
+      { filter: 'Sin Gluten (Celíacos)', percentage: 44 },
+      { filter: 'Vegano / Vegetariano', percentage: 28 },
+      { filter: 'Sin Lactosa', percentage: 18 },
+      { filter: 'Pescados & Mariscos', percentage: 10 },
     ],
   };
 
@@ -830,6 +898,18 @@ export default function AdminPage() {
                 {leadsList.length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setAdminTab('stats')}
+            className={`flex-1 min-w-[95px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all relative ${
+              adminTab === 'stats'
+                ? 'bg-torre-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-oro-400" />
+            <span>Métricas</span>
           </button>
         </div>
 
@@ -1146,7 +1226,7 @@ export default function AdminPage() {
         {adminTab === 'leads' && (
           <div className="space-y-3">
             <h3 className="text-sm font-black text-white uppercase tracking-wider">
-              Solicitudes Recibidas desde la Landing de Ventas
+              Solicitudes de Nuevos Restaurantes ({leadsList.length})
             </h3>
 
             {leadsList.length === 0 ? (
@@ -1187,6 +1267,106 @@ export default function AdminPage() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* TAB 5: SUPERADMIN GLOBAL METRICS ACROSS TORRELODONES */}
+        {adminTab === 'stats' && (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 border border-torre-800/60 p-5 rounded-3xl shadow-soft space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/80 pb-3">
+                <div>
+                  <span className="text-[10px] font-black text-oro-400 uppercase tracking-wider block">
+                    👑 Vista de Control Maestro · Torrelodones
+                  </span>
+                  <h3 className="text-base font-black text-white">
+                    Métricas Globales de la Red GastroTorre
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1 rounded-full flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>+28.4% Crecimiento Mensual</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Top Municipality KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block font-medium">Lecturas Totales QR</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">
+                    {restaurants.reduce((acc, r) => acc + (r.stats?.monthlyViews || 1280), 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-bold">94% Escaneos en mesa</span>
+                </div>
+
+                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block font-medium">Acciones de Reserva</span>
+                  <span className="text-2xl font-black text-oro-400 block mt-0.5">
+                    {restaurants.reduce((acc, r) => acc + (r.stats?.monthlyBookings || 180), 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Llamadas + WhatsApp</span>
+                </div>
+
+                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block font-medium">Impacto Económico</span>
+                  <span className="text-2xl font-black text-emerald-300 block mt-0.5">
+                    ~{(restaurants.length * 3240).toLocaleString()} €
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Facturación generada</span>
+                </div>
+
+                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block font-medium">Cartas de Papel Ahorradas</span>
+                  <span className="text-2xl font-black text-blue-300 block mt-0.5">
+                    ~{(restaurants.length * 420).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-blue-400 font-bold">Reducción CO2 y costes</span>
+                </div>
+              </div>
+
+              {/* Leaderboard of Restaurants */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                  Rendimiento por Restaurante Asociado
+                </h4>
+
+                <div className="space-y-2">
+                  {restaurants.map((rest, idx) => {
+                    const views = rest.stats?.monthlyViews || (1450 - idx * 220);
+                    const conv = (28.4 - idx * 1.8).toFixed(1);
+                    return (
+                      <div
+                        key={rest.id || rest.slug}
+                        className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="w-6 h-6 rounded-full bg-slate-800 text-oro-400 text-xs font-black flex items-center justify-center shrink-0 border border-slate-700">
+                            #{idx + 1}
+                          </span>
+                          <div className="truncate">
+                            <h5 className="text-xs font-black text-white truncate">{rest.name}</h5>
+                            <span className="text-[10px] text-slate-400">{rest.zone} • {rest.cuisine}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0 text-right">
+                          <div>
+                            <span className="text-xs font-black text-white block">{views.toLocaleString()}</span>
+                            <span className="text-[9px] text-slate-400">lecturas / mes</span>
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-oro-400 block">{conv}%</span>
+                            <span className="text-[9px] text-slate-400">conversión</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1860,31 +2040,402 @@ export default function AdminPage() {
         </form>
       )}
 
-      {/* TAB 3: STATS & IMPACT METRICS */}
+      {/* TAB 3: RICH STATS & ACTIONABLE METRICS DASHBOARD */}
       {activeTab === 'stats' && (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-torre-950 to-slate-900 text-white p-5 rounded-3xl shadow-soft space-y-3 border border-torre-900/60">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-oro-400 uppercase tracking-wider">
-                Impacto de tu Carta Digital
-              </span>
-              <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                +{stats.weeklyGrowth}% este mes
+          {/* Dashboard Header & Period Filter */}
+          <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 text-white p-5 rounded-3xl shadow-soft space-y-4 border border-torre-900/60">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-oro-400 uppercase tracking-wider">
+                    Panel de Rendimiento & Retorno de Inversión
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>En Vivo</span>
+                  </span>
+                </div>
+                <h2 className="text-lg font-black text-white leading-tight mt-0.5">
+                  Métricas de {currentRestaurant.name}
+                </h2>
+              </div>
+
+              {/* Period Filter Selector */}
+              <div className="flex items-center bg-slate-950/80 p-1 rounded-2xl border border-slate-700 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setMetricsPeriod('30d')}
+                  className={`px-3 py-1.5 rounded-xl transition-all ${
+                    metricsPeriod === '30d'
+                      ? 'bg-torre-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Últimos 30 días
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetricsPeriod('weekend')}
+                  className={`px-3 py-1.5 rounded-xl transition-all ${
+                    metricsPeriod === 'weekend'
+                      ? 'bg-torre-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Fin de Semana
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetricsPeriod('all')}
+                  className={`px-3 py-1.5 rounded-xl transition-all ${
+                    metricsPeriod === 'all'
+                      ? 'bg-torre-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Histórico
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Top KPI Impact Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Total Scans & Reads */}
+              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+                  <span>Lecturas de Carta</span>
+                  <span className="text-emerald-400 font-black text-[10px] bg-emerald-500/20 px-1.5 py-0.2 rounded-full">
+                    +{stats.weeklyGrowth}%
+                  </span>
+                </div>
+                <span className="text-2xl sm:text-3xl font-black text-white block">
+                  {stats.monthlyViews.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-slate-300 block font-medium">
+                  📱 {stats.monthlyQrScans} QR en mesa · 🌐 {stats.monthlyWebReads} web
+                </span>
+              </div>
+
+              {/* Unique Diners */}
+              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+                  <span>Comensales Únicos</span>
+                  <Users className="w-3.5 h-3.5 text-oro-400" />
+                </div>
+                <span className="text-2xl sm:text-3xl font-black text-white block">
+                  ~{stats.uniqueVisitors.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-slate-300 block font-medium">
+                  Personas que leyeron tu menú
+                </span>
+              </div>
+
+              {/* Conversion Rate */}
+              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+                  <span>Tasa de Conversión</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <span className="text-2xl sm:text-3xl font-black text-emerald-300 block">
+                  {stats.conversionRate}%
+                </span>
+                <span className="text-[10px] text-slate-300 block font-medium">
+                  1 de cada 3.5 comensales interactúa
+                </span>
+              </div>
+
+              {/* High Value ROI Card */}
+              <div className="bg-gradient-to-br from-amber-500/20 to-oro-500/20 p-3.5 rounded-2xl border border-amber-400/40 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-oro-300 font-bold">
+                  <span>Facturación Estimada</span>
+                  <Award className="w-3.5 h-3.5 text-oro-400" />
+                </div>
+                <span className="text-2xl sm:text-3xl font-black text-oro-300 block">
+                  ~{stats.estimatedRevenueEuros.toLocaleString()} €
+                </span>
+                <span className="text-[10px] text-amber-200/80 block font-medium">
+                  Retorno inversión: <strong className="text-white font-black">ROI 55x</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: CONVERSION FUNNEL & DIRECT CUSTOMER ACTIONS */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <span>🎯 Embudo de Conversión & Acciones de Clientes</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Acciones directas generadas por comensales mientras consultaban tu carta digital.
+                </p>
+              </div>
+              <span className="text-xs font-black text-torre-700 bg-torre-50 px-2.5 py-1 rounded-xl border border-torre-200/80">
+                {totalActionsCount} acciones totales
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
-                <span className="text-[11px] text-slate-300 block">Lecturas de Carta</span>
-                <span className="text-2xl font-black text-white block mt-0.5">{stats.monthlyViews}</span>
-                <span className="text-[10px] text-slate-400">Escaneos QR y visitas</span>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {/* Phone calls */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <span className="text-xl font-black text-slate-900 dark:text-white block mt-2">
+                  {stats.phoneCalls}
+                </span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Llamadas a Sala
+                </span>
+                <span className="text-[9px] text-slate-400 block">Clics en "Llamar"</span>
               </div>
 
-              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
-                <span className="text-[11px] text-slate-300 block">Contactos / Reservas</span>
-                <span className="text-2xl font-black text-oro-400 block mt-0.5">{stats.monthlyBookings}</span>
-                <span className="text-[10px] text-slate-400">Llamadas y WhatsApp directos</span>
+              {/* WhatsApp */}
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 rounded-2xl border border-emerald-200/80 space-y-1">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <span className="text-xl font-black text-emerald-900 dark:text-emerald-300 block mt-2">
+                  {stats.whatsappClicks}
+                </span>
+                <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200 block">
+                  WhatsApp Reservas
+                </span>
+                <span className="text-[9px] text-emerald-600/80 block">Consultas directas</span>
+              </div>
+
+              {/* GPS Navigation */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <span className="text-xl font-black text-slate-900 dark:text-white block mt-2">
+                  {stats.directionsClicks}
+                </span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Cómo Llegar
+                </span>
+                <span className="text-[9px] text-slate-400 block">Rutas GPS activadas</span>
+              </div>
+
+              {/* Google Reviews Booster */}
+              <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-200/80 space-y-1">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                </div>
+                <span className="text-xl font-black text-amber-900 dark:text-amber-300 block mt-2">
+                  {stats.googleReviewsClicks}
+                </span>
+                <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 block">
+                  Reseñas 5⭐ Google
+                </span>
+                <span className="text-[9px] text-amber-600/80 block">Multiplicador reputación</span>
+              </div>
+
+              {/* Shares */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 space-y-1 col-span-2 sm:col-span-1">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                  <Share2 className="w-4 h-4" />
+                </div>
+                <span className="text-xl font-black text-slate-900 dark:text-white block mt-2">
+                  {stats.sharesCount}
+                </span>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Compartidos
+                </span>
+                <span className="text-[9px] text-slate-400 block">Recomendado a amigos</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: PEAK HOURS & WEEKLY SCAN DISTRIBUTION */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Weekly Activity Bar Chart */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <BarChart3 className="w-4 h-4 text-torre-600" />
+                    <span>Afluencia por Día de la Semana</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Distribución de comensales escaneando el QR en mesa.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                {stats.scansByDay.map((item) => {
+                  const maxCount = Math.max(...stats.scansByDay.map((s) => s.count));
+                  const percentage = Math.round((item.count / maxCount) * 100);
+                  return (
+                    <div key={item.day} className="flex items-center gap-3 text-xs">
+                      <span className={`w-8 font-bold ${item.isPeak ? 'text-amber-600 font-black' : 'text-slate-600'}`}>
+                        {item.day}
+                      </span>
+                      <div className="flex-1 bg-slate-100 h-5 rounded-lg overflow-hidden relative">
+                        <div
+                          className={`h-full rounded-lg transition-all duration-500 ${
+                            item.isPeak
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-xs'
+                              : 'bg-torre-600'
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                      <div className="w-16 text-right font-mono font-bold flex items-center justify-end gap-1">
+                        <span className="text-slate-800">{item.count}</span>
+                        {item.isPeak && <span className="text-[10px]" title="Día de máxima afluencia">🔥</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Service Hours Breakdown: Lunch vs Dinner */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4 flex flex-col justify-between">
+              <div>
+                <div className="border-b border-slate-100 pb-2.5">
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-torre-600" />
+                    <span>Servicio Comidas vs Cenas</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Cuándo leen tu carta tus comensales.</p>
+                </div>
+
+                <div className="space-y-3 pt-3">
+                  {/* Lunch Service */}
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">☀️</span>
+                        <div>
+                          <span className="font-bold text-amber-950 block">Servicio de Comidas</span>
+                          <span className="text-[10px] text-amber-700">13:30 - 16:30 (Pico: 14:15h)</span>
+                        </div>
+                      </div>
+                      <span className="text-lg font-black text-amber-900">{stats.lunchServicePercent}%</span>
+                    </div>
+                    <div className="w-full bg-amber-200/60 h-2 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full rounded-full" style={{ width: `${stats.lunchServicePercent}%` }}></div>
+                    </div>
+                  </div>
+
+                  {/* Dinner Service */}
+                  <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🌙</span>
+                        <div>
+                          <span className="font-bold text-indigo-950 block">Servicio de Cenas</span>
+                          <span className="text-[10px] text-indigo-700">20:30 - 23:45 (Pico: 21:45h)</span>
+                        </div>
+                      </div>
+                      <span className="text-lg font-black text-indigo-900">{stats.dinnerServicePercent}%</span>
+                    </div>
+                    <div className="w-full bg-indigo-200/60 h-2 rounded-full overflow-hidden">
+                      <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${stats.dinnerServicePercent}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Time reading & Mobile Device breakdown */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                  <span className="text-[10px] text-slate-500 block font-bold">Tiempo Medio de Lectura</span>
+                  <span className="text-sm font-black text-slate-900">2 min 45 s</span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                  <span className="text-[10px] text-slate-500 block font-bold">Dispositivos Móviles</span>
+                  <span className="text-sm font-black text-emerald-600">96.8% en mesa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: TOP 5 VIEWED DISHES & DIETARY FILTERS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Top 5 Dishes */}
+            <div className="lg:col-span-2 bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <span>Top Platos Más Consultados en Carta</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Los platos que más despiertan el apetito de tus comensales.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {stats.topDishes.map((dish, idx) => (
+                  <div
+                    key={dish.name}
+                    className="p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 flex items-center justify-between gap-3 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
+                        idx === 0 ? 'bg-amber-400 text-slate-950 shadow-sm' :
+                        idx === 1 ? 'bg-slate-300 text-slate-900' :
+                        idx === 2 ? 'bg-amber-700 text-white' :
+                        'bg-slate-200 text-slate-700'
+                      }`}>
+                        #{idx + 1}
+                      </span>
+                      <div className="truncate">
+                        <h4 className="text-xs font-bold text-slate-900 truncate">{dish.name}</h4>
+                        <span className="text-[10px] text-slate-500">
+                          {dish.category || 'Carta General'} {dish.price ? `• ${dish.price.toFixed(2)} €` : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-black text-torre-700 block">{dish.views} lecturas</span>
+                      <span className="text-[9px] font-bold text-emerald-600">🔥 Alta demanda</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Health & Dietary Filters */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5 flex flex-col justify-between">
+              <div>
+                <div className="border-b border-slate-100 pb-2.5">
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-oro-500" />
+                    <span>Filtros Dietéticos Usados</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Interés de alérgenos y dietas de comensales.</p>
+                </div>
+
+                <div className="space-y-3 pt-3">
+                  {stats.popularFilters.map((filt) => (
+                    <div key={filt.filter} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700">{filt.filter}</span>
+                        <span className="font-black text-torre-700">{filt.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div className="bg-torre-600 h-full rounded-full" style={{ width: `${filt.percentage}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sustainability & Cost Saving Alert */}
+              <div className="mt-4 p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-1 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+                  <Leaf className="w-4 h-4 text-emerald-600" />
+                  <span>Ahorro & Sostenibilidad</span>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  Has evitado la impresión de <strong className="font-black text-emerald-950">~{stats.paperSaved} cartas físicas</strong>, ahorrando <strong className="font-black text-emerald-950">~140 €/trimestre</strong> en imprentas.
+                </p>
               </div>
             </div>
           </div>

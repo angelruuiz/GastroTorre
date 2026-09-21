@@ -372,35 +372,43 @@ export default function HomePage() {
                     </div>
 
                     {/* CTA Action Buttons */}
-                    <div className="pt-2 grid grid-cols-2 gap-2">
-                      <Link
-                        href={`/restaurante/${restaurant.slug}`}
-                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all text-center"
-                      >
-                        <span>Ver Carta Digital</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                    {(() => {
+                      const hasWhatsapp = Boolean(restaurant.whatsapp && restaurant.whatsapp.trim().length > 0);
+                      const hasPhone = Boolean(restaurant.phone && restaurant.phone.trim().length > 0);
+                      const showBooking = hasWhatsapp || hasPhone;
 
-                      {restaurant.bookingType === 'whatsapp' ? (
-                        <a
-                          href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20quisiera%20reservar%20una%20mesa%20en%20${encodeURIComponent(restaurant.name)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800/50 active:scale-95 transition-all"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>WhatsApp</span>
-                        </a>
-                      ) : (
-                        <a
-                          href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
-                          className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 active:scale-95 transition-all"
-                        >
-                          <Phone className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                          <span>Llamar y Reservar</span>
-                        </a>
-                      )}
-                    </div>
+                      return (
+                        <div className={`pt-2 grid ${showBooking ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+                          <Link
+                            href={`/restaurante/${restaurant.slug}`}
+                            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all text-center"
+                          >
+                            <span>Ver Carta Digital</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+
+                          {hasWhatsapp && restaurant.bookingType === 'whatsapp' ? (
+                            <a
+                              href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20quisiera%20reservar%20una%20mesa%20en%20${encodeURIComponent(restaurant.name)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800/50 active:scale-95 transition-all"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>WhatsApp</span>
+                            </a>
+                          ) : hasPhone ? (
+                            <a
+                              href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
+                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 active:scale-95 transition-all"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                              <span>Llamar y Reservar</span>
+                            </a>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );

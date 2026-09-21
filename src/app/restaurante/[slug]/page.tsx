@@ -232,43 +232,71 @@ export default function RestaurantDetailPage() {
         </div>
 
         {/* Quick Contact & Action Buttons Bar */}
-        <div className="px-4 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            {restaurant.description}
-          </p>
+        {Boolean(
+          (restaurant.phone && restaurant.phone.trim().length > 0) ||
+          (restaurant.whatsapp && restaurant.whatsapp.trim().length > 0) ||
+          (restaurant.googleMapsUrl && restaurant.googleMapsUrl.trim().length > 0)
+        ) && (
+          <div className="px-4 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+            {restaurant.description && (
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                {restaurant.description}
+              </p>
+            )}
 
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            {/* Phone */}
-            <a
-              href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
-              className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-center transition-all active:scale-95 shadow-sm"
-            >
-              <Phone className="w-4 h-4 text-slate-700 dark:text-slate-300 mb-1" />
-              <span className="text-[11px] font-bold">Llamar</span>
-            </a>
+            {(() => {
+              const hasPhone = Boolean(restaurant.phone && restaurant.phone.trim().length > 0);
+              const hasWhatsapp = Boolean(restaurant.whatsapp && restaurant.whatsapp.trim().length > 0);
+              const hasGps = Boolean(restaurant.googleMapsUrl && restaurant.googleMapsUrl.trim().length > 0);
+              const totalActions = [hasPhone, hasWhatsapp, hasGps].filter(Boolean).length;
 
-            {/* WhatsApp */}
-            <a
-              href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20quisiera%20reservar%20una%20mesa%20en%20${encodeURIComponent(restaurant.name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-center transition-all active:scale-95 shadow-sm"
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-1" />
-              <span className="text-[11px] font-bold">WhatsApp</span>
-            </a>
+              if (totalActions === 0) return null;
 
-            {/* GPS */}
-            <a
-              href={restaurant.googleMapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-torre-50 dark:bg-torre-950/40 hover:bg-torre-100 dark:hover:bg-torre-900/40 text-torre-950 dark:text-torre-200 border border-torre-200 dark:border-torre-800 text-center transition-all active:scale-95 shadow-sm"
-            >
-              <Navigation className="w-4 h-4 text-torre-600 dark:text-torre-400 mb-1" />
-              <span className="text-[11px] font-bold">Cómo llegar</span>
-            </a>
-          </div>
+              const gridColsClass = 
+                totalActions === 3 ? 'grid-cols-3' :
+                totalActions === 2 ? 'grid-cols-2' : 'grid-cols-1';
+
+              return (
+                <div className={`grid ${gridColsClass} gap-2 pt-1`}>
+                  {/* Phone */}
+                  {hasPhone && (
+                    <a
+                      href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
+                      className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-center transition-all active:scale-95 shadow-sm"
+                    >
+                      <Phone className="w-4 h-4 text-slate-700 dark:text-slate-300 mb-1" />
+                      <span className="text-[11px] font-bold">Llamar</span>
+                    </a>
+                  )}
+
+                  {/* WhatsApp */}
+                  {hasWhatsapp && (
+                    <a
+                      href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20quisiera%20reservar%20una%20mesa%20en%20${encodeURIComponent(restaurant.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-center transition-all active:scale-95 shadow-sm"
+                    >
+                      <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-1" />
+                      <span className="text-[11px] font-bold">WhatsApp</span>
+                    </a>
+                  )}
+
+                  {/* GPS */}
+                  {hasGps && (
+                    <a
+                      href={restaurant.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-torre-50 dark:bg-torre-950/40 hover:bg-torre-100 dark:hover:bg-torre-900/40 text-torre-950 dark:text-torre-200 border border-torre-200 dark:border-torre-800 text-center transition-all active:scale-95 shadow-sm"
+                    >
+                      <Navigation className="w-4 h-4 text-torre-600 dark:text-torre-400 mb-1" />
+                      <span className="text-[11px] font-bold">Cómo llegar</span>
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
 
           {/* Schedule, Address & Capacity info */}
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 flex-wrap gap-2">
@@ -294,7 +322,8 @@ export default function RestaurantDetailPage() {
             </div>
           </div>
         </div>
-      </div>
+      )}
+    </div>
 
       {/* DAILY MENU (MENÚ DEL DÍA) SPECIAL SECTION */}
       {restaurant.dailyMenu && restaurant.dailyMenu.isActive && (

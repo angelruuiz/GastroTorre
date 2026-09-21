@@ -109,7 +109,7 @@ export const GoogleReviewsBooster: React.FC<GoogleReviewsBoosterProps> = ({ rest
         </div>
       )}
 
-      {/* 1, 2 or 3 STARS STATE: PRIVATE WHATSAPP CHANNEL */}
+      {/* 1, 2 or 3 STARS STATE: PRIVATE FEEDBACK CHANNEL */}
       {selectedRating !== null && selectedRating <= 3 && (
         <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200 dark:border-amber-800/40 space-y-3 animate-fadeIn">
           <div className="flex items-center gap-2">
@@ -120,18 +120,32 @@ export const GoogleReviewsBooster: React.FC<GoogleReviewsBoosterProps> = ({ rest
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            Queremos mejorar día a día. Cuéntanos qué ha fallado directamente al responsable del local por WhatsApp privado antes de salir:
+            Queremos mejorar día a día. Cuéntanos qué ha fallado directamente al responsable antes de salir para solucionarlo de inmediato:
           </p>
 
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-98"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>Comentar al Encargado por WhatsApp</span>
-          </a>
+          {restaurant.whatsapp && restaurant.whatsapp.trim().length > 0 ? (
+            <a
+              href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hola, acabo de estar en ${restaurant.name} y me gustaría comentaros una sugerencia sobre mi visita para ayudaros a mejorar:`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-98"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Comentar al Encargado por WhatsApp</span>
+            </a>
+          ) : restaurant.phone && restaurant.phone.trim().length > 0 ? (
+            <a
+              href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-md transition-all active:scale-98"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Llamar al Responsable del Local</span>
+            </a>
+          ) : (
+            <div className="p-3 bg-white/80 dark:bg-slate-800 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 text-center">
+              Por favor, pide hablar con el responsable de sala para que podamos atenderte en persona.
+            </div>
+          )}
         </div>
       )}
 

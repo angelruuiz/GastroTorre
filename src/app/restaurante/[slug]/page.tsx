@@ -28,6 +28,7 @@ import { GoogleReviewsBooster } from '@/components/GoogleReviewsBooster';
 import { getOpenStatus } from '@/utils/schedule';
 import { INITIAL_RESTAURANTS } from '@/data/restaurants';
 import { OFFICIAL_ALLERGENS, DIET_FILTERS } from '@/data/allergens';
+import { dbService } from '@/lib/database/dbService';
 
 export default function RestaurantDetailPage() {
   const params = useParams();
@@ -49,7 +50,10 @@ export default function RestaurantDetailPage() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (restaurant?.id || restaurant?.slug) {
+      dbService.trackEvent(restaurant.id || restaurant.slug, 'page_view');
+    }
+  }, [restaurant?.id, restaurant?.slug]);
 
   // Default active category
   useEffect(() => {
@@ -78,6 +82,9 @@ export default function RestaurantDetailPage() {
   const liveStatus = mounted ? getOpenStatus(restaurant.schedule) : null;
 
   const handleShare = () => {
+    if (restaurant?.id || restaurant?.slug) {
+      dbService.trackEvent(restaurant.id || restaurant.slug, 'share_click');
+    }
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({
         title: `${restaurant.name} en GastroTorre`,
@@ -268,6 +275,7 @@ export default function RestaurantDetailPage() {
                   {hasPhone && (
                     <a
                       href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
+                      onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'call_click')}
                       className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-center transition-all active:scale-95 shadow-sm"
                     >
                       <Phone className="w-4 h-4 text-slate-700 dark:text-slate-300 mb-1" />
@@ -281,6 +289,7 @@ export default function RestaurantDetailPage() {
                       href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20he%20visto%20vuestra%20carta%20en%20GastroTorre%20y%20quer%C3%ADa%20haceros%20una%20consulta%20sobre%20${encodeURIComponent(restaurant.name)}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'whatsapp_click')}
                       className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-center transition-all active:scale-95 shadow-sm"
                     >
                       <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-1" />
@@ -294,6 +303,7 @@ export default function RestaurantDetailPage() {
                       href={restaurant.googleMapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'directions_click')}
                       className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-torre-50 dark:bg-torre-950/40 hover:bg-torre-100 dark:hover:bg-torre-900/40 text-torre-950 dark:text-torre-200 border border-torre-200 dark:border-torre-800 text-center transition-all active:scale-95 shadow-sm"
                     >
                       <Navigation className="w-4 h-4 text-torre-600 dark:text-torre-400 mb-1" />

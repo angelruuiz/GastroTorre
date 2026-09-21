@@ -171,7 +171,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             id: "j-2",
             name: "Croquetas Caseras de Cecina de León y Trufa (6 uds)",
             description: "Bechamel cremosa con leche fresca de la sierra y rebozado panko extra crujiente",
-            price: 13.00,
+            price: 14.50,
             image: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo"],
             isSpecialty: true,
@@ -181,7 +181,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             id: "j-3",
             name: "Mollejas de Cordero Lechal Salteadas al Ajillo con Boletus",
             description: "Doradas a fuego vivo con ajo tierno, boletus edulis y reducción de Pedro Ximénez",
-            price: 18.50,
+            price: 14.50,
             allergens: [],
             isAvailable: true,
             isGlutenFree: true
@@ -289,11 +289,11 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             id: "t-1",
             name: "Burrata di Puglia DOP con Pesto Genovese y Tomates Confitados",
             description: "Corazón cremoso de stracciatella, piñones tostados y focaccia artesanal",
-            price: 15.50,
+            price: 16.00,
             image: "https://images.unsplash.com/photo-1592417817098-8f3d6eb22509?q=80&w=600&auto=format&fit=crop",
             allergens: ["lactosa", "frutos-secos", "gluten"],
             isSpecialty: true,
-            isAvailable: false,
+            isAvailable: true,
             isVegetarian: true
           },
           {
@@ -316,7 +316,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             id: "t-3",
             name: "Tagliatelle al Tartufo Nero y Parmigiano en Rueda",
             description: "Pasta al dente mantecada con crema de trufa negra fresca de temporada y mantequilla alpina",
-            price: 19.00,
+            price: 21.50,
             image: "https://images.unsplash.com/photo-1621996346565-e3d5d6281691?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo"],
             isSpecialty: true,
@@ -327,7 +327,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             id: "t-4",
             name: "Ravioloni Rellenos de Ricotta y Espinacas con Salsa de Mantequilla y Salvia",
             description: "Toque crujiente de nueces caramelizadas",
-            price: 16.50,
+            price: 21.50,
             allergens: ["gluten", "lactosa", "huevo", "frutos-secos"],
             isAvailable: true,
             isVegetarian: true
@@ -353,7 +353,7 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             id: "t-6",
             name: "Pizza Diavola & Nduja Calabresa",
             description: "Mozzarella, salami picante spianata, nduja artesanal y miel de flores",
-            price: 15.50,
+            price: 16.50,
             allergens: ["gluten", "lactosa"],
             isSpecialty: true,
             isAvailable: true

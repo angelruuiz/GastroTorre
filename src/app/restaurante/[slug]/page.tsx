@@ -558,7 +558,7 @@ export default function RestaurantDetailPage() {
                   >
                     <div className="flex gap-3.5">
                       {/* Dish Details */}
-                      <div className="flex-1 space-y-1.5">
+                      <div className="flex-1 min-w-0 space-y-1.5">
                         {/* Specialty / Available / Diet Badges */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {dish.isSpecialty && (

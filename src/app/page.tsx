@@ -31,8 +31,30 @@ export default function HomePage() {
   const [onlyOpenNow, setOnlyOpenNow] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Scroll position restoration for seamless back-navigation
   useEffect(() => {
     setMounted(true);
+
+    if (typeof window !== 'undefined') {
+      const savedScroll = sessionStorage.getItem('gastrotorre_home_scroll');
+      if (savedScroll) {
+        const targetY = Number(savedScroll);
+        // Instant restore after layout tick
+        const timeout = setTimeout(() => {
+          window.scrollTo({ top: targetY, behavior: 'instant' });
+        }, 60);
+        return () => clearTimeout(timeout);
+      }
+
+      const onScroll = () => {
+        if (window.scrollY > 0) {
+          sessionStorage.setItem('gastrotorre_home_scroll', String(window.scrollY));
+        }
+      };
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      return () => window.removeEventListener('scroll', onScroll);
+    }
   }, []);
 
   // Helper to normalize strings removing accents/tildes
@@ -381,6 +403,11 @@ export default function HomePage() {
                         <div className={`pt-2 grid ${showBooking ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
                           <Link
                             href={`/restaurante/${restaurant.slug}`}
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                sessionStorage.setItem('gastrotorre_home_scroll', String(window.scrollY));
+                              }
+                            }}
                             className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all text-center"
                           >
                             <span>Ver Carta Digital</span>
@@ -389,7 +416,7 @@ export default function HomePage() {
 
                           {hasWhatsapp && restaurant.bookingType === 'whatsapp' ? (
                             <a
-                              href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20quisiera%20reservar%20una%20mesa%20en%20${encodeURIComponent(restaurant.name)}`}
+                              href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20he%20visto%20vuestra%20carta%20en%20GastroTorre%20y%20quer%C3%ADa%20haceros%20una%20consulta%20sobre%20${encodeURIComponent(restaurant.name)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800/50 active:scale-95 transition-all"
@@ -403,7 +430,7 @@ export default function HomePage() {
                               className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 active:scale-95 transition-all"
                             >
                               <Phone className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                              <span>Llamar y Reservar</span>
+                              <span>Llamar</span>
                             </a>
                           ) : null}
                         </div>

@@ -52,7 +52,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize data and session on mount
+  const refreshLiveRestaurants = async () => {
+    try {
+      const loaded = await DatabaseService.getRestaurants();
+      if (loaded && loaded.length > 0) {
+        setRestaurants(loaded);
+      }
+    } catch (e) {
+      console.warn('Realtime refresh error:', e);
+    }
+  };
+
+  // Initialize data and session on mount + Supabase Realtime & Visibility Change
   useEffect(() => {
     const init = async () => {
       try {
@@ -80,6 +91,49 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     init();
+
+    // 1. Supabase Realtime WebSocket Listener (instant sync on any dish or restaurant change)
+    let channel: any = null;
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        channel = supabase
+          .channel('gastrotorre_live_sync')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'dishes' }, () => {
+            refreshLiveRestaurants();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, () => {
+            refreshLiveRestaurants();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_categories' }, () => {
+            refreshLiveRestaurants();
+          })
+          .subscribe();
+      } catch (subErr) {
+        console.warn('Could not establish Supabase realtime subscription:', subErr);
+      }
+    }
+
+    // 2. Auto-Refresh on app focus/unlock (crucial for iOS PWA added to home screen)
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshLiveRestaurants();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    
+    // 3. Periodic fallback poll every 8 seconds
+    const interval = setInterval(refreshLiveRestaurants, 8000);
+
+    return () => {
+      if (channel && supabase) {
+        try { supabase.removeChannel(channel); } catch {}
+      }
+      window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      clearInterval(interval);
+    };
   }, []);
 
   const getRestaurantBySlug = (slug: string) => {

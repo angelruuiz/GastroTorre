@@ -156,11 +156,16 @@ export default function RestaurantDetailPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-black/40 to-black/50"></div>
 
           {/* Top Floating Buttons Bar */}
-          <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push('/');
+                }
+              }}
               className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white transition-all active:scale-90 shadow-md"
-              title="Volver al inicio"
+              title="Volver al directorio"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>

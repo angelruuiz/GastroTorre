@@ -2177,87 +2177,60 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* SECTION 4: TOP 5 VIEWED DISHES & DIETARY FILTERS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Top 5 Dishes */}
-            <div className="lg:col-span-2 bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                    <Flame className="w-4 h-4 text-orange-500" />
-                    <span>Top Platos Más Consultados en Carta</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Los platos que más despiertan el apetito de tus comensales.</p>
-                </div>
+          {/* SECTION 4: DIETARY FILTERS & SUSTAINABILITY SAVINGS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Health & Dietary Filters */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5">
+              <div className="border-b border-slate-100 pb-2.5">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-oro-500" />
+                  <span>Filtros Dietéticos Usados por Comensales</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">Demanda real de alérgenos y opciones vegetarianas/celíacas en sala.</p>
               </div>
 
-              <div className="space-y-2.5">
-                {stats.topDishes.map((dish, idx) => (
-                  <div
-                    key={dish.name}
-                    className="p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 flex items-center justify-between gap-3 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
-                        idx === 0 ? 'bg-amber-400 text-slate-950 shadow-sm' :
-                        idx === 1 ? 'bg-slate-300 text-slate-900' :
-                        idx === 2 ? 'bg-amber-700 text-white' :
-                        'bg-slate-200 text-slate-700'
-                      }`}>
-                        #{idx + 1}
-                      </span>
-                      <div className="truncate">
-                        <h4 className="text-xs font-bold text-slate-900 truncate">{dish.name}</h4>
-                        <span className="text-[10px] text-slate-500">
-                          {dish.category || 'Carta General'} {dish.price ? `• ${dish.price.toFixed(2)} €` : ''}
-                        </span>
-                      </div>
+              <div className="space-y-3 pt-2">
+                {stats.popularFilters.map((filt) => (
+                  <div key={filt.filter} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700">{filt.filter}</span>
+                      <span className="font-black text-torre-700">{filt.percentage}%</span>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-black text-torre-700 block">{dish.views} lecturas</span>
-                      <span className="text-[9px] font-bold text-emerald-600">🔥 Alta demanda</span>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div className="bg-torre-600 h-full rounded-full" style={{ width: `${filt.percentage}%` }}></div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Health & Dietary Filters */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5 flex flex-col justify-between">
+            {/* Sustainability & Cost Saving Alert */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4 flex flex-col justify-between">
               <div>
                 <div className="border-b border-slate-100 pb-2.5">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-oro-500" />
-                    <span>Filtros Dietéticos Usados</span>
+                    <Leaf className="w-4 h-4 text-emerald-600" />
+                    <span>Ahorro Directo de Costes en Papel</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">Interés de alérgenos y dietas de comensales.</p>
+                  <p className="text-[11px] text-slate-500">Impacto económico positivo al digitalizar tu carta.</p>
                 </div>
 
-                <div className="space-y-3 pt-3">
-                  {stats.popularFilters.map((filt) => (
-                    <div key={filt.filter} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-700">{filt.filter}</span>
-                        <span className="font-black text-torre-700">{filt.percentage}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div className="bg-torre-600 h-full rounded-full" style={{ width: `${filt.percentage}%` }}></div>
-                      </div>
+                <div className="pt-3 space-y-3">
+                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
+                      <span>Cartas físicas evitadas</span>
+                      <span className="text-base font-black text-emerald-900">~{stats.paperSaved} impresiones</span>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <p className="text-[11px] text-emerald-800 leading-relaxed">
+                      Cada vez que cambias un precio o un plato por Telegram, ahorras el coste de reimprimir la carta completa del restaurante.
+                    </p>
+                  </div>
 
-              {/* Sustainability & Cost Saving Alert */}
-              <div className="mt-4 p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-1 text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-900">
-                  <Leaf className="w-4 h-4 text-emerald-600" />
-                  <span>Ahorro & Sostenibilidad</span>
+                  <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Ahorro trimestral estimado:</span>
+                    <span className="text-sm font-black text-emerald-600">~140 € / trimestre</span>
+                  </div>
                 </div>
-                <p className="text-[11px] text-emerald-800 leading-relaxed">
-                  Has evitado la impresión de <strong className="font-black text-emerald-950">~{stats.paperSaved} cartas físicas</strong>, ahorrando <strong className="font-black text-emerald-950">~140 €/trimestre</strong> en imprentas.
-                </p>
               </div>
             </div>
           </div>

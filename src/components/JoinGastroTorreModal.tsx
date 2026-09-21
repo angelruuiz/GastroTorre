@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Store, Check, Sparkles, MessageCircle, Send, ShieldCheck, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { DatabaseService } from '@/lib/database/dbService';
 
 interface JoinGastroTorreModalProps {
   isOpen: boolean;
@@ -14,21 +15,34 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
   const [name, setName] = useState('');
   const [owner, setOwner] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [zone, setZone] = useState('Torrelodones Pueblo');
   const [cuisine, setCuisine] = useState('');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
     try {
+      await DatabaseService.createLead({
+        restaurantName: name,
+        contactName: owner,
+        phone,
+        email: email || `${phone.replace(/\s+/g, '')}@lead.gastrotorre.es`,
+        plan: 'Plan Pro (59€/mes)',
+        zone,
+      });
+
       confetti({
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
       });
-    } catch (err) {}
+    } catch (err) {
+      console.warn('Error saving lead to database:', err);
+    } finally {
+      setSubmitted(true);
+    }
   };
 
   const handleWhatsAppDirect = () => {
@@ -73,7 +87,7 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
               <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
                 <Check className="w-8 h-8" />
               </div>
-              <h4 className="text-base font-black text-slate-900">¡Solicitud Recibida!</h4>
+              <h4 className="text-base font-black text-slate-900">¡Solicitud Recibida en la Base de Datos!</h4>
               <p className="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto">
                 Nos pondremos en contacto contigo en menos de 24h para digitalizar tu carta y entregarte tus códigos QR listos.
               </p>

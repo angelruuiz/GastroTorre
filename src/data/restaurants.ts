@@ -602,3 +602,5 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     ]
   }
 ];
+
+export const initialRestaurants = INITIAL_RESTAURANTS;

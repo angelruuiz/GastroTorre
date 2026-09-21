@@ -1,0 +1,28 @@
+import { MetadataRoute } from 'next';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'GastroTorre',
+    short_name: 'GastroTorre',
+    description: 'Guía Gastronómica y Cartas Digitales de Torrelodones',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0f172a',
+    theme_color: '#1d4ed8',
+    orientation: 'portrait',
+    icons: [
+      {
+        src: '/logo-gastrotorre.jpeg',
+        sizes: '192x192',
+        type: 'image/jpeg',
+        purpose: 'any',
+      },
+      {
+        src: '/logo-gastrotorre.jpeg',
+        sizes: '512x512',
+        type: 'image/jpeg',
+        purpose: 'maskable',
+      },
+    ],
+  };
+}

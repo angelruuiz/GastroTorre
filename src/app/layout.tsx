@@ -6,16 +6,24 @@ import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://gastrotorre.vercel.app'),
+  applicationName: 'GastroTorre',
   title: 'GastroTorre | Guía Gastronómica y Cartas Digitales de Torrelodones',
   description: 'Descubre los mejores restaurantes de Torrelodones (Pueblo y Colonia). Consulta sus cartas digitales con precios, fotos, alérgenos y reserva en 1 clic.',
   keywords: ['Torrelodones', 'Restaurantes Torrelodones', 'Dónde comer Torrelodones', 'Carta digital Torrelodones', 'GastroTorre', 'Torre a la Carta'],
   authors: [{ name: 'GastroTorre' }],
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'GastroTorre',
+  },
   icons: {
     icon: [
       { url: '/logo-gastrotorre.jpeg', type: 'image/jpeg' },
     ],
+    shortcut: '/logo-gastrotorre.jpeg',
     apple: [
-      { url: '/logo-gastrotorre.jpeg' },
+      { url: '/logo-gastrotorre.jpeg', sizes: '180x180', type: 'image/jpeg' },
     ],
   },
   openGraph: {

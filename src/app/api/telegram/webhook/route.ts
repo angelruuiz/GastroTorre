@@ -10,41 +10,100 @@ const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ||
   Buffer.from('c2Jfc2VjcmV0X0NLeF9wYVIzUlN4V1ZLRnY5TFR0ZkFfOG9BZXltdV8=', 'base64').toString('utf8');
 
 // Configuración de Restaurantes Autorizados y Pines
-const RESTAURANT_CONFIG: Record<string, { name: string; pin: string; token: string; slug: string }> = {
+const RESTAURANT_CONFIG: Record<string, { name: string; pin: string; token: string; slug: string; uuid: string }> = {
   'asador-los-jarales': {
     name: 'Asador Los Jarales',
     pin: 'JARALES-7482',
     token: 'gt_jarales_89a3f2c1',
     slug: 'asador-los-jarales',
+    uuid: 'a1000000-0000-0000-0000-000000000001',
   },
   'la-tavola': {
     name: 'La Tavola di Torrelodones',
     pin: 'TAVOLA-3910',
     token: 'gt_tavola_77b4d9e0',
     slug: 'la-tavola',
+    uuid: 'a2000000-0000-0000-0000-000000000002',
   },
   'el-olivo-bistro': {
     name: 'Bistró El Olivo',
     pin: 'OLIVO-5521',
     token: 'gt_olivo_52c8a1f6',
     slug: 'el-olivo-bistro',
+    uuid: 'a3000000-0000-0000-0000-000000000003',
   },
   'torre-smash': {
     name: 'Torre Smash & Brew',
     pin: 'SMASH-9184',
     token: 'gt_smash_33e1b7d4',
     slug: 'torre-smash',
+    uuid: 'a4000000-0000-0000-0000-000000000004',
   },
   'la-huerta-brunch': {
     name: 'Café & Brunch La Huerta',
     pin: 'HUERTA-4412',
     token: 'gt_huerta_94f0c8a2',
     slug: 'la-huerta-brunch',
+    uuid: 'a5000000-0000-0000-0000-000000000005',
   },
 };
 
 // In-memory bindings fallback for warm serverless instances
 const warmBindings: Map<string, { restaurantSlug: string; restaurantName: string; senderName: string }> = new Map();
+
+// Persistent session management using Supabase Cloud (Never lost across cold starts)
+async function getPersistentBinding(chatId: string): Promise<{ restaurantSlug: string; restaurantName: string; senderName: string } | null> {
+  const warm = warmBindings.get(chatId);
+  if (warm) return warm;
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/analytics_events?event_type=eq.telegram_binding&user_agent=like.chat:${encodeURIComponent(chatId)}:*&order=created_at.desc&limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const parts = (data[0].user_agent || '').split(':');
+        if (parts.length >= 4) {
+          const slug = parts[2];
+          const name = parts.slice(3).join(':');
+          const found = { restaurantSlug: slug, restaurantName: name, senderName: 'Hostelero' };
+          warmBindings.set(chatId, found);
+          return found;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error fetching persistent binding:', e);
+  }
+  return null;
+}
+
+async function savePersistentBinding(chatId: string, restaurantSlug: string, restaurantName: string, senderName: string) {
+  warmBindings.set(chatId, { restaurantSlug, restaurantName, senderName });
+  try {
+    const restaurantUuid = RESTAURANT_CONFIG[restaurantSlug]?.uuid || 'a1000000-0000-0000-0000-000000000001';
+    await fetch(`${SUPABASE_URL}/rest/v1/analytics_events`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        restaurant_id: restaurantUuid,
+        event_type: 'telegram_binding',
+        user_agent: `chat:${chatId}:${restaurantSlug}:${restaurantName}`,
+      }),
+    });
+  } catch (e) {
+    console.warn('Error saving persistent binding:', e);
+  }
+}
 
 // Helper to call Telegram API
 async function apiCall(method: string, body: Record<string, any> = {}) {
@@ -158,55 +217,76 @@ async function applyDishChangeToSupabase(dishNameSearch: string, updates: { pric
 }
 
 // Extractor resiliente multilínea de cambios desde el mensaje de Superadmin (Stateless Serverless)
-function extractChangesFromMessage(messageText: string) {
-  const changes: { dishName: string; updates: { price?: number; isAvailable?: boolean } }[] = [];
-  const lines = messageText.split('\n');
-  let currentDish: string | null = null;
+function extractChangesFromMessage(text: string): Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> {
+  const changes: Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> = [];
+  const lines = text.split('\n');
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
 
-    // Match dish header: "• *Tartar de Atún*:" or "• Tartar:"
-    const dishMatch = line.match(/^•\s*\*?([^:*]+)\*?:/);
-    if (dishMatch) {
-      currentDish = dishMatch[1].replace(/[*_~]/g, '').trim();
-    }
-
-    // Match price change in current line or sub-bullet: "➔ *23.50€*"
-    const priceMatch = line.match(/➔\s*\*?([0-9]+[.,]?[0-9]*)\s*€/i);
-    if (priceMatch && currentDish) {
-      const price = Number(priceMatch[1].replace(',', '.'));
-      if (!isNaN(price)) {
-        changes.push({ dishName: currentDish, updates: { price } });
+    // A. Extracción de precio: e.g., "• 💰 Croquetas de Jamón: 14.50 €" o "Croquetas a 14.50"
+    const priceMatch = line.match(/(?:•\s*💰\s*|Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
+    if (priceMatch) {
+      const dishName = priceMatch[1].replace(/^[•\s💰\-]+/, '').trim();
+      const priceVal = parseFloat(priceMatch[2].replace(',', '.'));
+      if (dishName && !isNaN(priceVal) && priceVal > 0) {
+        changes.push({
+          dishName,
+          updates: { price: priceVal }
+        });
+        continue;
       }
-      continue;
     }
 
-    // Match availability toggles in current line or sub-bullet
-    if (line.includes('➔') && (line.toLowerCase().includes('disponible') || line.toLowerCase().includes('activar'))) {
-      if (currentDish) changes.push({ dishName: currentDish, updates: { isAvailable: true } });
-    } else if (line.includes('➔') && (line.toLowerCase().includes('agotado') || line.toLowerCase().includes('desactivar'))) {
-      if (currentDish) changes.push({ dishName: currentDish, updates: { isAvailable: false } });
+    // B. Extracción de plato agotado / disponible
+    const agotadoMatch = line.match(/(?:•\s*🚫\s*|Agotar:\s*|Marcar agotado:\s*)([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
+      line.match(/(?:agotar|agotado|sin stock|no queda|terminado)\s+(?:de\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+    if (agotadoMatch) {
+      const dishName = agotadoMatch[1].replace(/^[•\s🚫\-]+/, '').trim();
+      if (dishName) {
+        changes.push({
+          dishName,
+          updates: { isAvailable: false }
+        });
+        continue;
+      }
+    }
+
+    const disponibleMatch = line.match(/(?:•\s*✅\s*|Disponible:\s*|Activar:\s*)([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
+      line.match(/(?:disponible|activar|reponer|hay stock)\s+(?:de\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+    if (disponibleMatch) {
+      const dishName = disponibleMatch[1].replace(/^[•\s✅\-]+/, '').trim();
+      if (dishName) {
+        changes.push({
+          dishName,
+          updates: { isAvailable: true }
+        });
+        continue;
+      }
     }
   }
 
   return changes;
 }
 
-// Menú interactivo de /pines para Superadmin
-function renderPinesMenu() {
-  const list = Object.entries(RESTAURANT_CONFIG)
-    .map(([slug, c], i) => `*${i + 1}. ${c.name}*\n🔑 *PIN:* \`${c.pin}\`\n🔗 *Magic Link:* \`https://t.me/GastroTorreTicketsBot?start=${c.token}\``)
-    .join('\n\n');
-
-  return `☁️ *PANEL EN LA NUBE 24/7 (VERCEL SERVERLESS)*\n━━━━━━━━━━━━━━━━━━━━\n${list}\n━━━━━━━━━━━━━━━━━━━━\n⚡ *Estado:* Servidor en la nube 100% activo sin necesidad de portátil encendido.`;
+function renderPinesMenu(): string {
+  let text = '🔐 *DIRECTORIO DE PINES Y TOKENS GASTROTORRE:*\n━━━━━━━━━━━━━━━━━━━━\n\n';
+  for (const [slug, cfg] of Object.entries(RESTAURANT_CONFIG)) {
+    text += `🏠 *${cfg.name}*\n`;
+    text += `  • *PIN:* \`${cfg.pin}\`\n`;
+    text += `  • *Magic Link:* \`https://t.me/GastroTorreTicketsBot?start=${cfg.token}\`\n`;
+    text += `  • *Web:* \`https://gastrotorre.vercel.app/restaurante/${slug}\`\n\n`;
+  }
+  text += '💡 _Comparte el PIN o el enlace con el hostelero para vincular su cuenta._';
+  return text;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const update = await req.json();
 
-    // 1. GESTIÓN DE CALLBACK QUERIES (Botones APROBAR / RECHAZAR del Superadmin)
+    // 1. GESTIÓN DE CALLBACK QUERIES (Botones Interactivos del Superadmin)
     if (update.callback_query) {
       const callback = update.callback_query;
       const data = callback.data as string;
@@ -218,7 +298,6 @@ export async function POST(req: NextRequest) {
       if (data.startsWith('app_') || data.startsWith('approve_')) {
         const ticketId = data.replace('app_', '').replace('approve_', '');
 
-        // Check if message says "ESTE SITIO NO ESTÁ ALOJADO"
         if (messageText.includes('ESTE SITIO NO ESTÁ ALOJADO')) {
           await answerCallbackQuery(callback.id, '⛔ Sitio no alojado en GastroTorre');
           await editMessageText(
@@ -241,10 +320,19 @@ export async function POST(req: NextRequest) {
 
         await answerCallbackQuery(callback.id, `✅ ¡${updatedCount} cambios aplicados y publicados en vivo!`);
 
+        const viewMenuMarkup = {
+          inline_keyboard: [
+            [
+              { text: '👀 Ver Carta en Vivo', url: 'https://gastrotorre.vercel.app' }
+            ]
+          ]
+        };
+
         await editMessageText(
           fromChatId,
           messageId,
-          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud`
+          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud`,
+          viewMenuMarkup
         );
 
         return NextResponse.json({ ok: true, status: 'approved', changes: updatedCount });
@@ -268,16 +356,42 @@ export async function POST(req: NextRequest) {
     // 2. GESTIÓN DE MENSAJES (Texto, Fotos, Audios/Voces)
     if (update.message) {
       const msg = update.message;
-      const chatId = msg.chat.id;
+      const chatId = String(msg.chat.id);
       const text = (msg.text || msg.caption || '').trim();
       const senderName = msg.from?.first_name || 'Usuario';
       const username = msg.from?.username ? `@${msg.from.username}` : senderName;
-      const isSuperAdmin = String(chatId) === String(ADMIN_CHAT_ID);
+      const isSuperAdmin = chatId === String(ADMIN_CHAT_ID);
 
       // Comando /pines para Superadmin
       if (isSuperAdmin && text.startsWith('/pines')) {
         const menuText = renderPinesMenu();
         await sendMessage(chatId, menuText);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Comando /ayuda para el hostelero
+      if (text.startsWith('/ayuda') || text.toLowerCase() === 'ayuda') {
+        const helpText = 
+`📖 *GUÍA RÁPIDA DE GASTROTORRE:*
+━━━━━━━━━━━━━━━━━━━━
+Puedes enviarme mensajes directos como si hablaras con un asistente:
+
+1️⃣ *Cambiar precios:*
+👉 _"Poner Chuletón de Vaca a 75€"_
+👉 _"Subir las Croquetas a 14.50€"_
+
+2️⃣ *Marcar plato agotado o reponer:*
+👉 _"Marcar Tarta de Queso como agotada hoy"_
+👉 _"Volvemos a tener Tarta de Queso"_
+
+3️⃣ *Consultar tu carta actual:*
+👉 Escribe \`/carta\` para ver tus platos y precios al instante.
+
+4️⃣ *Añadir fotos:*
+👉 Envía una foto del plato con el nombre en el pie de foto.
+
+⚡ _Todo se publica automáticamente en tu carta digital 24/7._`;
+        await sendMessage(chatId, helpText);
         return NextResponse.json({ ok: true });
       }
 
@@ -288,24 +402,30 @@ export async function POST(req: NextRequest) {
           const token = parts[1].trim();
           for (const [slug, cfg] of Object.entries(RESTAURANT_CONFIG)) {
             if (cfg.token === token) {
-              warmBindings.set(String(chatId), {
-                restaurantSlug: slug,
-                restaurantName: cfg.name,
-                senderName,
-              });
+              await savePersistentBinding(chatId, slug, cfg.name, senderName);
 
               await sendMessage(
                 chatId,
-                `✅ *¡Bienvenido, ${senderName}! Tu cuenta está vinculada a ${cfg.name}.*\n\nPuedes enviarme mensajes de texto con los cambios que necesites (ej: _"Sube las croquetas a 14.50€"_) o fotos de tus platos en cualquier momento. El servicio funciona 24/7 en la nube.`
+                `✅ *¡Bienvenido, ${senderName}! Tu cuenta está vinculada a ${cfg.name}.*\n\nPuedes enviarme mensajes de texto con los cambios que necesites (ej: _"Sube las croquetas a 14.50€"_) o escribir \`/carta\` para ver tu menú actual.`
               );
               return NextResponse.json({ ok: true });
             }
           }
         }
 
+        // Check if already bound
+        const existingBinding = await getPersistentBinding(chatId);
+        if (existingBinding) {
+          await sendMessage(
+            chatId,
+            `👋 *¡Hola de nuevo, ${senderName}!* Tu cuenta está vinculada a *${existingBinding.restaurantName}*.\n\nEscribe el cambio que necesitas o escribe \`/ayuda\` para ver ejemplos.`
+          );
+          return NextResponse.json({ ok: true });
+        }
+
         await sendMessage(
           chatId,
-          `👋 *¡Hola, ${senderName}! Bienvenido a GastroTorre 24/7.*\n\nIntroduce el **PIN de tu restaurante** o haz clic en el Magic Link que te proporcionó el administrador para comenzar.`
+          `👋 *¡Hola, ${senderName}! Bienvenido a GastroTorre 24/7.*\n\nIntroduce el **PIN de tu restaurante** (ej: \`JARALES-7482\`) para vincular tu cuenta.`
         );
         return NextResponse.json({ ok: true });
       }
@@ -314,15 +434,11 @@ export async function POST(req: NextRequest) {
       const upperText = text.toUpperCase().replace(/\s+/g, '');
       for (const [slug, cfg] of Object.entries(RESTAURANT_CONFIG)) {
         if (upperText === cfg.pin || upperText === cfg.pin.replace('-', '')) {
-          warmBindings.set(String(chatId), {
-            restaurantSlug: slug,
-            restaurantName: cfg.name,
-            senderName,
-          });
+          await savePersistentBinding(chatId, slug, cfg.name, senderName);
 
           await sendMessage(
             chatId,
-            `🔑 *¡PIN Correcto!*\n\nTu Telegram ha quedado vinculado con éxito a *${cfg.name}*.\n\nYa puedes enviarme cambios de precios, platos agotados o fotos en cualquier momento.`
+            `🔑 *¡PIN Correcto!*\n\nTu Telegram ha quedado vinculado permanentemente a *${cfg.name}*.\n\nYa puedes enviarme cambios de precios, platos agotados o fotos en cualquier momento sin volver a introducir el PIN.`
           );
           return NextResponse.json({ ok: true });
         }
@@ -337,8 +453,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
-      // Buscar vinculación existente o fallback para admin
-      let binding = warmBindings.get(String(chatId));
+      // Buscar vinculación existente persistente en Supabase Cloud
+      let binding = await getPersistentBinding(chatId);
       if (!binding && isSuperAdmin) {
         binding = {
           restaurantSlug: 'asador-los-jarales',
@@ -353,6 +469,38 @@ export async function POST(req: NextRequest) {
           `👋 Gracias por contactar con GastroTorre. Para vincular tu restaurante, escribe el **PIN de tu local** (ej: \`JARALES-7482\`).`
         );
         return NextResponse.json({ ok: true });
+      }
+
+      // Comando /carta: Listar carta actual para el hostelero
+      if (text.startsWith('/carta')) {
+        try {
+          const restaurantUuid = RESTAURANT_CONFIG[binding.restaurantSlug]?.uuid;
+          const queryUrl = restaurantUuid 
+            ? `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&select=name,price,is_available&order=name.asc`
+            : `${SUPABASE_URL}/rest/v1/dishes?select=name,price,is_available&limit=15`;
+          
+          const res = await fetch(queryUrl, {
+            headers: {
+              'apikey': SUPABASE_SECRET_KEY,
+              'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+            },
+          });
+          if (res.ok) {
+            const dishes = await res.json();
+            let cartaText = `📋 *CARTA ACTUAL DE ${binding.restaurantName.toUpperCase()}:*\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+            for (const d of dishes.slice(0, 20)) {
+              const statusIcon = d.is_available !== false ? '✅' : '🚫 Agotado';
+              cartaText += `• *${d.name}:* ${Number(d.price).toFixed(2)} € (${statusIcon})\n`;
+            }
+            cartaText += `\n🔗 *Ver completa en web:* https://gastrotorre.vercel.app/restaurante/${binding.restaurantSlug}\n`;
+            cartaText += `💡 _Para cambiar cualquier precio, solo escribe: "Poner [Plato] a [Precio]€"_`;
+            
+            await sendMessage(chatId, cartaText);
+            return NextResponse.json({ ok: true });
+          }
+        } catch (e) {
+          console.warn('Error fetching dishes for /carta:', e);
+        }
       }
 
       const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -391,9 +539,9 @@ ${summary}
       return NextResponse.json({ ok: true, ticketId });
     }
 
-    return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    console.error('[Telegram Webhook Error]:', error);
-    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ ok: true, ignored: true });
+  } catch (err: any) {
+    console.error('Error handling Telegram webhook:', err?.message);
+    return NextResponse.json({ ok: false, error: err?.message }, { status: 500 });
   }
 }

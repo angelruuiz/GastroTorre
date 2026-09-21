@@ -1866,118 +1866,118 @@ export default function AdminPage() {
       {activeTab === 'stats' && (
         <div className="space-y-4">
           {/* Dashboard Header & Period Filter */}
-          <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 text-white p-5 rounded-3xl shadow-soft space-y-4 border border-torre-900/60">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
+          <div className="bg-slate-900 text-white p-5 rounded-3xl shadow-soft space-y-4 border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-oro-400 uppercase tracking-wider">
-                    Panel de Rendimiento & Retorno de Inversión
+                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                    Panel de Rendimiento & Analítica
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span>En Vivo</span>
                   </span>
                 </div>
-                <h2 className="text-lg font-black text-white leading-tight mt-0.5">
+                <h2 className="text-base sm:text-lg font-black text-white leading-tight mt-0.5">
                   Métricas de {currentRestaurant.name}
                 </h2>
               </div>
 
               {/* Period Filter Selector */}
-              <div className="flex items-center bg-slate-950/80 p-1 rounded-2xl border border-slate-700 text-xs font-bold">
+              <div className="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setMetricsPeriod('30d')}
                   className={`px-3 py-1.5 rounded-xl transition-all ${
                     metricsPeriod === '30d'
-                      ? 'bg-torre-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Últimos 30 días
+                  30 días
                 </button>
                 <button
                   type="button"
                   onClick={() => setMetricsPeriod('weekend')}
                   className={`px-3 py-1.5 rounded-xl transition-all ${
                     metricsPeriod === 'weekend'
-                      ? 'bg-torre-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Fin de Semana
+                  Fines de semana
                 </button>
                 <button
                   type="button"
                   onClick={() => setMetricsPeriod('all')}
                   className={`px-3 py-1.5 rounded-xl transition-all ${
                     metricsPeriod === 'all'
-                      ? 'bg-torre-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Histórico
+                  Total
                 </button>
               </div>
             </div>
 
-            {/* 4 Top KPI Impact Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* 4 Top KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Total Scans & Reads */}
-              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+              <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 space-y-1">
+                <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
                   <span>Lecturas de Carta</span>
-                  <span className="text-emerald-400 font-black text-[10px] bg-emerald-500/20 px-1.5 py-0.2 rounded-full">
+                  <span className="text-emerald-400 font-black text-[10px] bg-emerald-500/20 px-1.5 py-0.5 rounded-full">
                     +{stats.weeklyGrowth}%
                   </span>
                 </div>
-                <span className="text-2xl sm:text-3xl font-black text-white block">
+                <span className="text-2xl font-black text-white block">
                   {stats.monthlyViews.toLocaleString()}
                 </span>
-                <span className="text-[10px] text-slate-300 block font-medium">
-                  📱 {stats.monthlyQrScans} QR en mesa · 🌐 {stats.monthlyWebReads} web
+                <span className="text-[11px] text-slate-400 block truncate">
+                  📱 {stats.monthlyQrScans} QR mesa · 🌐 {stats.monthlyWebReads} web
                 </span>
               </div>
 
               {/* Unique Diners */}
-              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+              <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 space-y-1">
+                <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
                   <span>Comensales Únicos</span>
-                  <Users className="w-3.5 h-3.5 text-oro-400" />
+                  <Users className="w-3.5 h-3.5 text-amber-400" />
                 </div>
-                <span className="text-2xl sm:text-3xl font-black text-white block">
+                <span className="text-2xl font-black text-white block">
                   ~{stats.uniqueVisitors.toLocaleString()}
                 </span>
-                <span className="text-[10px] text-slate-300 block font-medium">
-                  Personas que leyeron tu menú
+                <span className="text-[11px] text-slate-400 block truncate">
+                  Personas que leyeron tu carta
                 </span>
               </div>
 
               {/* Conversion Rate */}
-              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
-                  <span>Tasa de Conversión</span>
+              <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 space-y-1">
+                <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
+                  <span>Tasa de Interacción</span>
                   <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
-                <span className="text-2xl sm:text-3xl font-black text-emerald-300 block">
+                <span className="text-2xl font-black text-emerald-400 block">
                   {stats.conversionRate}%
                 </span>
-                <span className="text-[10px] text-slate-300 block font-medium">
-                  1 de cada 3.5 comensales interactúa
+                <span className="text-[11px] text-slate-400 block truncate">
+                  1 de cada 3.5 comensales actúa
                 </span>
               </div>
 
-              {/* High Value ROI Card */}
-              <div className="bg-gradient-to-br from-amber-500/20 to-oro-500/20 p-3.5 rounded-2xl border border-amber-400/40 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-oro-300 font-bold">
+              {/* Estimated Value ROI */}
+              <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/20 p-4 rounded-2xl border border-amber-500/30 space-y-1">
+                <div className="flex items-center justify-between text-xs text-amber-300 font-bold">
                   <span>Facturación Estimada</span>
-                  <Award className="w-3.5 h-3.5 text-oro-400" />
+                  <Award className="w-3.5 h-3.5 text-amber-400" />
                 </div>
-                <span className="text-2xl sm:text-3xl font-black text-oro-300 block">
+                <span className="text-2xl font-black text-amber-300 block">
                   ~{stats.estimatedRevenueEuros.toLocaleString()} €
                 </span>
-                <span className="text-[10px] text-amber-200/80 block font-medium">
-                  Retorno inversión: <strong className="text-white font-black">ROI 55x</strong>
+                <span className="text-[11px] text-amber-200/80 block font-medium">
+                  Retorno: <strong className="text-white font-black">ROI 55x</strong>
                 </span>
               </div>
             </div>
@@ -1985,89 +1985,91 @@ export default function AdminPage() {
 
           {/* SECTION 2: CONVERSION FUNNEL & DIRECT CUSTOMER ACTIONS */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                  <span>🎯 Embudo de Conversión & Acciones de Clientes</span>
+                  <span>🎯 Acciones Directas de Comensales</span>
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Acciones directas generadas por comensales mientras consultaban tu carta digital.
+                  Contactos e intenciones reales de visita generadas desde tu carta digital.
                 </p>
               </div>
-              <span className="text-xs font-black text-torre-700 bg-torre-50 px-2.5 py-1 rounded-xl border border-torre-200/80">
+              <span className="text-xs font-black text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200 self-start sm:self-auto">
                 {totalActionsCount} acciones totales
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Phone calls */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
-                  <Phone className="w-4 h-4" />
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5" />
                 </div>
-                <span className="text-xl font-black text-slate-900 dark:text-white block mt-2">
-                  {stats.phoneCalls}
-                </span>
-                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Llamadas a Sala
-                </span>
-                <span className="text-[9px] text-slate-400 block">Clics en "Llamar"</span>
+                <div className="min-w-0">
+                  <span className="text-2xl font-black text-slate-900 leading-tight block">
+                    {stats.phoneCalls}
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 block truncate">
+                    Llamadas a Sala
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    Clics en "Llamar"
+                  </span>
+                </div>
               </div>
 
               {/* WhatsApp */}
-              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 rounded-2xl border border-emerald-200/80 space-y-1">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4" />
+              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/80 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5" />
                 </div>
-                <span className="text-xl font-black text-emerald-900 dark:text-emerald-300 block mt-2">
-                  {stats.whatsappClicks}
-                </span>
-                <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200 block">
-                  WhatsApp Reservas
-                </span>
-                <span className="text-[9px] text-emerald-600/80 block">Consultas directas</span>
+                <div className="min-w-0">
+                  <span className="text-2xl font-black text-emerald-900 leading-tight block">
+                    {stats.whatsappClicks}
+                  </span>
+                  <span className="text-xs font-bold text-emerald-800 block truncate">
+                    WhatsApp Reservas
+                  </span>
+                  <span className="text-[10px] text-emerald-600 block truncate">
+                    Consultas directas
+                  </span>
+                </div>
               </div>
 
               {/* GPS Navigation */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                  <MapPin className="w-4 h-4" />
+              <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200/80 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5" />
                 </div>
-                <span className="text-xl font-black text-slate-900 dark:text-white block mt-2">
-                  {stats.directionsClicks}
-                </span>
-                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Cómo Llegar
-                </span>
-                <span className="text-[9px] text-slate-400 block">Rutas GPS activadas</span>
+                <div className="min-w-0">
+                  <span className="text-2xl font-black text-indigo-900 leading-tight block">
+                    {stats.directionsClicks}
+                  </span>
+                  <span className="text-xs font-bold text-indigo-800 block truncate">
+                    Cómo Llegar
+                  </span>
+                  <span className="text-[10px] text-indigo-600 block truncate">
+                    Rutas GPS activadas
+                  </span>
+                </div>
               </div>
 
-              {/* Google Reviews Booster */}
-              <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-200/80 space-y-1">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+              {/* Google Reviews Booster & Shares */}
+              <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
                 </div>
-                <span className="text-xl font-black text-amber-900 dark:text-amber-300 block mt-2">
-                  {stats.googleReviewsClicks}
-                </span>
-                <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 block">
-                  Reseñas 5⭐ Google
-                </span>
-                <span className="text-[9px] text-amber-600/80 block">Multiplicador reputación</span>
-              </div>
-
-              {/* Shares */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 space-y-1 col-span-2 sm:col-span-1">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                  <Share2 className="w-4 h-4" />
+                <div className="min-w-0">
+                  <span className="text-2xl font-black text-amber-900 leading-tight block">
+                    {stats.googleReviewsClicks}
+                  </span>
+                  <span className="text-xs font-bold text-amber-800 block truncate">
+                    Reseñas 5⭐ Google
+                  </span>
+                  <span className="text-[10px] text-amber-600 block truncate">
+                    {stats.sharesCount} compartidos
+                  </span>
                 </div>
-                <span className="text-xl font-black text-slate-900 dark:text-white block mt-2">
-                  {stats.sharesCount}
-                </span>
-                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Compartidos
-                </span>
-                <span className="text-[9px] text-slate-400 block">Recomendado a amigos</span>
               </div>
             </div>
           </div>
@@ -2076,17 +2078,15 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Weekly Activity Bar Chart */}
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                    <BarChart3 className="w-4 h-4 text-torre-600" />
-                    <span>Afluencia por Día de la Semana</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Distribución de comensales escaneando el QR en mesa.</p>
-                </div>
+              <div className="border-b border-slate-100 pb-2.5">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                  <span>Afluencia por Día de la Semana</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">Distribución de comensales leyendo la carta en mesa.</p>
               </div>
 
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2.5 pt-1">
                 {stats.scansByDay.map((item) => {
                   const maxCount = Math.max(...stats.scansByDay.map((s) => s.count));
                   const percentage = Math.round((item.count / maxCount) * 100);
@@ -2099,15 +2099,15 @@ export default function AdminPage() {
                         <div
                           className={`h-full rounded-lg transition-all duration-500 ${
                             item.isPeak
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-xs'
-                              : 'bg-torre-600'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                              : 'bg-blue-600'
                           }`}
                           style={{ width: `${percentage}%` }}
                         ></div>
                       </div>
-                      <div className="w-16 text-right font-mono font-bold flex items-center justify-end gap-1">
+                      <div className="w-14 text-right font-mono font-bold flex items-center justify-end gap-1">
                         <span className="text-slate-800">{item.count}</span>
-                        {item.isPeak && <span className="text-[10px]" title="Día de máxima afluencia">🔥</span>}
+                        {item.isPeak && <span className="text-[10px]">🔥</span>}
                       </div>
                     </div>
                   );
@@ -2120,15 +2120,15 @@ export default function AdminPage() {
               <div>
                 <div className="border-b border-slate-100 pb-2.5">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-torre-600" />
+                    <Clock className="w-4 h-4 text-blue-600" />
                     <span>Servicio Comidas vs Cenas</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">Cuándo leen tu carta tus comensales.</p>
+                  <p className="text-[11px] text-slate-500">Franja horaria en la que tus clientes consultan la carta.</p>
                 </div>
 
                 <div className="space-y-3 pt-3">
                   {/* Lunch Service */}
-                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2">
+                  <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <span className="text-base">☀️</span>
@@ -2145,7 +2145,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Dinner Service */}
-                  <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 space-y-2">
+                  <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <span className="text-base">🌙</span>
@@ -2183,7 +2183,7 @@ export default function AdminPage() {
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-3.5">
               <div className="border-b border-slate-100 pb-2.5">
                 <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-oro-500" />
+                  <Sparkles className="w-4 h-4 text-amber-500" />
                   <span>Filtros Dietéticos Usados por Comensales</span>
                 </h3>
                 <p className="text-[11px] text-slate-500">Demanda real de alérgenos y opciones vegetarianas/celíacas en sala.</p>
@@ -2194,10 +2194,10 @@ export default function AdminPage() {
                   <div key={filt.filter} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-700">{filt.filter}</span>
-                      <span className="font-black text-torre-700">{filt.percentage}%</span>
+                      <span className="font-black text-blue-600">{filt.percentage}%</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-torre-600 h-full rounded-full" style={{ width: `${filt.percentage}%` }}></div>
+                      <div className="bg-blue-600 h-full rounded-full" style={{ width: `${filt.percentage}%` }}></div>
                     </div>
                   </div>
                 ))}

@@ -148,7 +148,7 @@ export class DatabaseService {
 
         if (!error && data && data.length > 0) {
           // Transform supabase data to frontend model
-          return data.map((r: any) => ({
+          const transformed = data.map((r: any) => ({
             id: r.id,
             slug: r.slug,
             name: r.name,
@@ -166,7 +166,7 @@ export class DatabaseService {
             googleMapsUrl: r.google_maps_url || '',
             phone: r.phone,
             whatsapp: r.whatsapp || '',
-            bookingType: r.whatsapp ? 'whatsapp' : 'phone',
+            bookingType: (r.whatsapp ? 'whatsapp' : 'phone') as 'whatsapp' | 'phone',
             capacity: 60,
             features: r.tags || [],
             featured: r.is_featured || false,
@@ -190,6 +190,14 @@ export class DatabaseService {
               })),
             })),
           }));
+
+          if (this.isClient()) {
+            try {
+              localStorage.setItem(STORAGE_KEYS.RESTAURANTS, JSON.stringify(transformed));
+            } catch {}
+          }
+
+          return transformed;
         }
       } catch (e) {
         console.warn('Supabase fetch failed, using local/fallback storage:', e);

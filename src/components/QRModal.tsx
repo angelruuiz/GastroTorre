@@ -18,8 +18,8 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
 
   if (!isOpen) return null;
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://gastrotorre.es';
-  const targetUrl = `${baseUrl}/restaurante/${restaurant.slug}`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://gastrotorre.vercel.app';
+  const targetUrl = `${baseUrl}/restaurante/${restaurant.slug}?src=qr_mesa`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(targetUrl);

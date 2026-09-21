@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useRestaurants } from '@/context/RestaurantContext';
 import { 
@@ -14,14 +14,14 @@ import {
   Sparkles, 
   Check, 
   Navigation, 
-  Filter,
-  Share2,
-  UtensilsCrossed,
-  Info,
-  ShieldCheck,
-  X,
-  RotateCcw,
-  Users
+  Filter, 
+  Share2, 
+  UtensilsCrossed, 
+  Info, 
+  ShieldCheck, 
+  X, 
+  RotateCcw, 
+  Users 
 } from 'lucide-react';
 import { AllergenBadge } from '@/components/AllergenBadge';
 import { GoogleReviewsBooster } from '@/components/GoogleReviewsBooster';
@@ -32,9 +32,13 @@ import { dbService } from '@/lib/database/dbService';
 
 export default function RestaurantDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const slug = params?.slug as string;
   const { getRestaurantBySlug } = useRestaurants();
+
+  // Check if visitor came directly from scanning physical table QR code
+  const isTableQr = searchParams?.get('src') === 'qr_mesa' || searchParams?.get('src') === 'qr';
 
   // Find restaurant with fallback to initial data to guarantee zero empty render
   const restaurant = 
@@ -51,9 +55,9 @@ export default function RestaurantDetailPage() {
   useEffect(() => {
     setMounted(true);
     if (restaurant?.id || restaurant?.slug) {
-      dbService.trackEvent(restaurant.id || restaurant.slug, 'page_view');
+      dbService.trackEvent(restaurant.id || restaurant.slug, isTableQr ? 'qr_scan' : 'page_view');
     }
-  }, [restaurant?.id, restaurant?.slug]);
+  }, [restaurant?.id, restaurant?.slug, isTableQr]);
 
   // Default active category
   useEffect(() => {

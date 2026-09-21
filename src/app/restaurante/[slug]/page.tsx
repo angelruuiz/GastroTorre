@@ -156,6 +156,7 @@ export default function RestaurantDetailPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-black/40 to-black/50"></div>
 
           {/* Top Floating Buttons Bar */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
             <button
               onClick={() => {
                 if (typeof window !== 'undefined' && window.history.length > 1) {

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Restaurant, initialRestaurants, Dish, MenuCategory } from '@/data/restaurants';
 import { DatabaseService, ReservationRecord } from '@/lib/database/dbService';
 import { AuthService, UserAccount, INITIAL_ACCOUNTS } from '@/lib/auth/authService';
-import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 
 interface RestaurantContextType {
   restaurants: Restaurant[];

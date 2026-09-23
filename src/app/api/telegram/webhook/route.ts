@@ -109,7 +109,7 @@ async function savePersistentBinding(chatId: string, restaurantSlug: string, res
 // Conversational Dish Wizard & Allergen Extraction Helpers
 // --------------------------------------------------------------------------
 
-async function getPendingDishWizard(chatId: string): Promise<{ dishName: string; price: number; restaurantSlug: string } | null> {
+async function getPendingDishWizard(chatId: string): Promise<{ dishName: string; price: number; restaurantSlug: string; step: 'awaiting_price' | 'awaiting_details' } | null> {
   try {
     const url = `${SUPABASE_URL}/rest/v1/analytics_events?event_type=eq.pending_dish_wizard&user_agent=like.wizard:${encodeURIComponent(chatId)}:*&order=created_at.desc&limit=1`;
     const res = await fetch(url, {
@@ -126,7 +126,8 @@ async function getPendingDishWizard(chatId: string): Promise<{ dishName: string;
           const restaurantSlug = parts[2];
           const dishName = decodeURIComponent(parts[3]);
           const price = parseFloat(parts[4]);
-          return { dishName, price, restaurantSlug };
+          const step = (parts[5] as 'awaiting_price' | 'awaiting_details') || (isNaN(price) || price <= 0 ? 'awaiting_price' : 'awaiting_details');
+          return { dishName, price: isNaN(price) ? 0 : price, restaurantSlug, step };
         }
       }
     }
@@ -136,7 +137,7 @@ async function getPendingDishWizard(chatId: string): Promise<{ dishName: string;
   return null;
 }
 
-async function savePendingDishWizard(chatId: string, restaurantSlug: string, dishName: string, price: number) {
+async function savePendingDishWizard(chatId: string, restaurantSlug: string, dishName: string, price: number, step: 'awaiting_price' | 'awaiting_details' = 'awaiting_details') {
   try {
     const restaurantUuid = RESTAURANT_CONFIG[restaurantSlug]?.uuid || 'a1000000-0000-0000-0000-000000000001';
     await fetch(`${SUPABASE_URL}/rest/v1/analytics_events`, {
@@ -149,7 +150,7 @@ async function savePendingDishWizard(chatId: string, restaurantSlug: string, dis
       body: JSON.stringify({
         restaurant_id: restaurantUuid,
         event_type: 'pending_dish_wizard',
-        user_agent: `wizard:${chatId}:${restaurantSlug}:${encodeURIComponent(dishName)}:${price}`,
+        user_agent: `wizard:${chatId}:${restaurantSlug}:${encodeURIComponent(dishName)}:${price}:${step}`,
       }),
     });
   } catch (e) {
@@ -169,6 +170,30 @@ async function clearPendingDishWizard(chatId: string) {
   } catch (e) {
     console.warn('Error clearing pending wizard:', e);
   }
+}
+
+function detectAddDishWithoutPrice(text: string): string | null {
+  if (!text) return null;
+  const clean = text.trim();
+  // If price is already present in text, let standard price parsing handle it
+  if (/\d+[\.,]?\d*\s*(?:€|euros?|EUR)/i.test(clean) || /(?:precio\s*[:=]?\s*\d+|a\s+\d+[\.,]?\d*)/i.test(clean)) {
+    return null;
+  }
+
+  // Common phrases for adding / creating a dish
+  const addPattern = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|por\s+favor|porfa|oye)?[\s,:\-]*(?:quiero\s+añadir|quiero\s+poner|quiero\s+meter|quiero\s+crear|añad(?:e|ir|eme|irme|enos)?|agreg(?:a|ar|ame|arnos)?|crea(?:r|nos)?|met(?:e|er|ernos)?|pon(?:er)?\s+nuevo\s+plato|sub(?:e|ir)\s+nuevo\s+plato|nuevo\s+plato|plato\s+nuevo|incluy(?:e|ir))\s+(?:un|una|el|la|los|las|nuevo\s+plato\s+de\s+|nuevo\s+plato\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s+a\s+la\s+carta|\s+en\s+la\s+carta|\s+al\s+men[úu]|\s+en\s+el\s+men[úu]|\s+a\s+nuestra\s+carta|\s+por\s+favor|\s+gracias)?$/i;
+
+  const match = clean.match(addPattern);
+  if (match) {
+    const raw = match[1];
+    const cleaned = cleanDishName(raw);
+    const nonDishWords = ['carta', 'menu', 'plato', 'nuevo', 'nuevo plato', 'precio', 'horario', 'cartel', 'foto'];
+    if (cleaned && cleaned.length >= 2 && !nonDishWords.includes(cleaned.toLowerCase())) {
+      return cleaned;
+    }
+  }
+
+  return null;
 }
 
 function parseAllergens(text: string): string[] {
@@ -1193,9 +1218,84 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
         return NextResponse.json({ ok: true });
       }
 
-      // 1. GESTIÓN DE WIZARD ACTIVO (El hostelero está respondiendo descripción y alérgenos de un nuevo plato)
+      // 1. GESTIÓN DE WIZARD ACTIVO (El hostelero está respondiendo precio, descripción o alérgenos de un nuevo plato)
       const pendingWizard = await getPendingDishWizard(chatId);
       if (pendingWizard) {
+        if (pendingWizard.step === 'awaiting_price') {
+          // Extraer precio del mensaje
+          const priceMatch = text.match(/(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)?/i);
+          const parsedPrice = priceMatch ? parseFloat(priceMatch[1].replace(',', '.')) : null;
+
+          if (!parsedPrice || isNaN(parsedPrice) || parsedPrice <= 0) {
+            await sendMessage(
+              chatId,
+              `💰 *Por favor, indica un precio válido en euros* para *${pendingWizard.dishName}*.\n\n👉 _Ejemplo:_ \`14.50€\` o \`14.50\`\n\n_(Escribe /cancelar para anular esta solicitud)_`
+            );
+            return NextResponse.json({ ok: true, status: 'awaiting_valid_price' });
+          }
+
+          // Si en este mismo mensaje ya incluyó descripción o alérgenos
+          const hasExplicitDetails = /al[ée]rgenos?|alergias?|ingredientes?|descripci[óo]n|con base de|elaborad[oa]|preparad[oa]|frutos|gluten|huevo|leche|lactosa|pescado/i.test(text) || text.length >= 60;
+
+          if (hasExplicitDetails) {
+            await clearPendingDishWizard(chatId);
+            const allergens = parseAllergens(text);
+            const description = cleanDescription(text) || 'Especialidad de la casa elaborada con ingredientes seleccionados.';
+            const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            const allergensLabel = allergens.length > 0
+              ? allergens.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join(', ')
+              : 'Ninguno declarado';
+
+            const summary = 
+`• ✨ *Tipo:* Alta de Nuevo Plato (Ficha Completa)
+• 🍽️ *Plato:* *${pendingWizard.dishName}*
+• 💰 *Precio:* ${parsedPrice.toFixed(2)} €
+• 📝 *Descripción:* ${description}
+• 🏷️ *Alérgenos:* ${allergensLabel}`;
+
+            await sendMessage(
+              chatId,
+              `✅ *¡Ficha completada para tu nuevo plato!* (#${ticketId})\n\n🍽️ *Plato:* *${pendingWizard.dishName}* (${parsedPrice.toFixed(2)} €)\n📝 *Descripción:* _${description}_\n🏷️ *Alérgenos:* ${allergensLabel}\n\n⏳ Tu solicitud ha sido enviada al Superadmin para su validación y publicación en directo en tu carta digital.`
+            );
+
+            const adminNotificationText = 
+`🎫 *TICKET CLOUD #${ticketId} — ${binding.restaurantName}*
+━━━━━━━━━━━━━━━━━━━━
+🏠 *Restaurante:* ${binding.restaurantName} (✅ *Oficial*)
+👤 *Hostelero:* ${username} (ID: \`${chatId}\`)
+✨ *Categoría:* Alta de Nuevo Plato (Ficha Completa)
+💬 *Mensaje Original:*
+_${text}_
+
+🤖 *Detalles del Nuevo Plato:*
+${summary.trim()}
+━━━━━━━━━━━━━━━━━━━━
+☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;
+
+            const keyboard = {
+              inline_keyboard: [
+                [
+                  { text: '✅ Aprobar y Publicar en Web', callback_data: `app_${ticketId}` },
+                  { text: '❌ Rechazar Solicitud', callback_data: `rej_${ticketId}` },
+                ],
+              ],
+            };
+
+            await sendMessage(ADMIN_CHAT_ID, adminNotificationText, keyboard);
+            return NextResponse.json({ ok: true, ticketId });
+          } else {
+            // Avanzar al paso de descripción y alérgenos
+            await savePendingDishWizard(chatId, pendingWizard.restaurantSlug, pendingWizard.dishName, parsedPrice, 'awaiting_details');
+            await sendMessage(
+              chatId,
+              `💰 *Precio anotado:* *${parsedPrice.toFixed(2)} €* para *${pendingWizard.dishName}*.\n━━━━━━━━━━━━━━━━━━━━\nPara mantener la estética limpia de tu carta y cumplir con la **Normativa de Alérgenos (Reglamento UE 1169/2011)**, por favor indícanos:\n\n1️⃣ *Descripción / ingredientes:* (ej: _"Tarta tradicional con base de almendras y canela"_)\n2️⃣ *Alérgenos que contiene:* (ej: _"Gluten, lácteos, huevo, frutos secos"_ o escribe _"Ninguno"_)\n\n✍️ _Responde a este mensaje con los detalles._`
+            );
+            return NextResponse.json({ ok: true, status: 'awaiting_dish_details' });
+          }
+        }
+
+        // pendingWizard.step === 'awaiting_details'
         await clearPendingDishWizard(chatId);
 
         const allergens = parseAllergens(text);
@@ -1243,6 +1343,18 @@ ${summary.trim()}
 
         await sendMessage(ADMIN_CHAT_ID, adminNotificationText, keyboard);
         return NextResponse.json({ ok: true, ticketId });
+      }
+
+      // 2. DETECCIÓN PROACTIVA DE PETICIÓN DE AÑADIR PLATO SIN PRECIO
+      const addWithoutPriceDish = detectAddDishWithoutPrice(text);
+      if (addWithoutPriceDish) {
+        // Guardar estado inicial para esperar el precio
+        await savePendingDishWizard(chatId, binding.restaurantSlug, addWithoutPriceDish, 0, 'awaiting_price');
+        await sendMessage(
+          chatId,
+          `✨ *¡Nuevo plato detectado!*\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Plato:* *${addWithoutPriceDish}*\n\n💰 *Por favor, indica el precio* que tendrá en la carta (ej: _14.50€_ o simplemente _14.50_):`
+        );
+        return NextResponse.json({ ok: true, status: 'awaiting_dish_price' });
       }
 
       // Comando /carta: Listar carta actual para el hostelero

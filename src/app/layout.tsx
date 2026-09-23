@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'GastroTorre',
   },
   icons: {
@@ -56,7 +56,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#252d36',
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export default function RootLayout({
@@ -66,7 +70,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className="scroll-smooth">
-      <body className="bg-slate-100 flex flex-col min-h-screen">
+      <body className="bg-slate-100 dark:bg-slate-950 flex flex-col min-h-screen">
         <RestaurantProvider>
           {/* Mobile phone frame container for ultra clean presentation */}
           <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 min-h-screen shadow-xl flex flex-col relative border-x border-slate-200/60 dark:border-slate-800">

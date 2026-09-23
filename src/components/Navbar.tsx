@@ -8,15 +8,31 @@ export const Navbar: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const updateMetaThemeColor = (dark: boolean) => {
+    const color = dark ? '#0f172a' : '#ffffff';
+    // Update all theme-color meta tags
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (metas.length > 0) {
+      metas.forEach(meta => meta.setAttribute('content', color));
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = color;
+      document.head.appendChild(meta);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem('theme');
     if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDark(true);
       document.documentElement.classList.add('dark');
+      updateMetaThemeColor(true);
     } else {
       setIsDark(false);
       document.documentElement.classList.remove('dark');
+      updateMetaThemeColor(false);
     }
   }, []);
 
@@ -26,14 +42,16 @@ export const Navbar: React.FC = () => {
     if (next) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
+      updateMetaThemeColor(true);
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
+      updateMetaThemeColor(false);
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 shadow-sm transition-all">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 shadow-sm transition-all pt-[env(safe-area-inset-top)]">
       <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">

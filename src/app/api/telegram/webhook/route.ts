@@ -402,9 +402,9 @@ async function applyDishChangeToSupabase(
       }
     }
 
-    // 3. First non-empty word fallback
+    // 3. First non-empty word fallback (only if not generic)
     const firstWord = dishNameSearch.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, '').trim().split(/\s+/)[0];
-    if (firstWord && !searchQueries.some(q => q.includes(encodeURIComponent(firstWord)))) {
+    if (firstWord && !genericWords.has(firstWord.toLowerCase()) && !searchQueries.some(q => q.includes(encodeURIComponent(firstWord)))) {
       searchQueries.push(`*${encodeURIComponent(firstWord)}*`);
       const sFirst = singularize(firstWord);
       if (sFirst !== firstWord) searchQueries.push(`*${encodeURIComponent(sFirst)}*`);

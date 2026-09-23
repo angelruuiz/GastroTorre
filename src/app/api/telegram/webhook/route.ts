@@ -402,7 +402,6 @@ function cleanDishName(raw: string): string {
   return name;
 }
 
-// Extractor resiliente multilínea y conversacional de cambios
 function extractChangesFromMessage(text: string): Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> {
   const changes: Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> = [];
   const lines = text.split('\n');
@@ -411,11 +410,36 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
     const line = rawLine.trim();
     if (!line) continue;
 
-    // Split on connectors like " y ", " e ", ",", ";"
+    // 1. Structured summary lines (High priority when approving from Admin card)
+    if (line.includes('💰')) {
+      const m = line.match(/💰\s*\*?([^*:\n]+?)\*?:\s*(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
+      if (m) {
+        changes.push({ dishName: cleanDishName(m[1]), updates: { price: parseFloat(m[2].replace(',', '.')) } });
+        continue;
+      }
+    }
+
+    if (line.includes('🚫')) {
+      const m = line.match(/🚫\s*\*?([^*:\n]+?)\*?(?::|\s+Marcar|\s+Agotad)/i);
+      if (m) {
+        changes.push({ dishName: cleanDishName(m[1]), updates: { isAvailable: false } });
+        continue;
+      }
+    }
+
+    if (line.includes('✅') && !line.includes('Oficial') && !line.includes('ESTADO') && !line.includes('Sincronizado')) {
+      const m = line.match(/✅\s*\*?([^*:\n]+?)\*?(?::|\s+Marcar|\s+Disponible)/i);
+      if (m) {
+        changes.push({ dishName: cleanDishName(m[1]), updates: { isAvailable: true } });
+        continue;
+      }
+    }
+
+    // 2. Conversational clauses in raw message text
     const clauses = line.split(/\s+(?:y|e|además|tambien|también|,|;)\s+/i);
     for (const clause of clauses) {
       // A. Extracción de precio
-      const priceMatch = clause.match(/(?:•\s*💰\s*|Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*|\s+pasa\s+a\s+(?:costar\s+)?)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
+      const priceMatch = clause.match(/(?:Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*|\s+pasa\s+a\s+(?:costar\s+)?)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
       if (priceMatch) {
         const rawDish = priceMatch[1];
         const cleaned = cleanDishName(rawDish);
@@ -432,8 +456,7 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
       // B. Extracción de plato/producto agotado (Frases coloquiales y directas)
       const agotadoMatch = 
         clause.match(/(?:ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?(?:\s+nada\s+de)?|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|sin\s+stock\s+de|quitar|desactivar|marcar\s+como\s+agotad[oa])\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
-        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:agotad[oa]s?|sin\s+stock|no\s+queda|no\s+quedan|terminad[oa]s?|acabad[oa]s?)/i) ||
-        clause.match(/(?:•\s*🚫\s*|agotar|agotad[oa]|sin\s+stock|no\s+queda|terminad[oa])\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:agotad[oa]s?|sin\s+stock|no\s+queda|no\s+quedan|terminad[oa]s?|acabad[oa]s?)/i);
 
       if (agotadoMatch) {
         const target = agotadoMatch[1] || agotadoMatch[2];
@@ -450,8 +473,7 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
       // C. Extracción de plato/producto disponible o repuesto
       const disponibleMatch = 
         clause.match(/(?:ya\s+(?:nos\s+)?ha\s+llegado|volvemos\s+a\s+tener|ya\s+tenemos|vuelve\s+a\s+haber|hemos\s+repuesto|activar|reponer|marcar\s+como\s+disponible)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
-        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|activad[oa]|repuest[oa]|de\s+vuelta)/i) ||
-        clause.match(/(?:•\s*✅\s*|disponible|activar|reponer|hay\s+stock|volver\s+a\s+tener)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|activad[oa]|repuest[oa]|de\s+vuelta)/i);
 
       if (disponibleMatch) {
         const target = disponibleMatch[1] || disponibleMatch[2];
@@ -467,7 +489,15 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
     }
   }
 
-  return changes;
+  // Deduplicar cambios por nombre de plato
+  const uniqueMap = new Map<string, { dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }>();
+  for (const c of changes) {
+    if (!uniqueMap.has(c.dishName)) {
+      uniqueMap.set(c.dishName, c);
+    }
+  }
+
+  return Array.from(uniqueMap.values());
 }
 
 

@@ -218,6 +218,58 @@ async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch:
       }
     }
 
+    if (!matched && updates.price !== undefined) {
+      try {
+        // Fetch first category for this restaurant to assign the new dish
+        const catUrl = `${SUPABASE_URL}/rest/v1/menu_categories?restaurant_id=eq.${restaurantUuid}&order=order_index.asc&limit=1`;
+        const catRes = await fetch(catUrl, {
+          headers: {
+            'apikey': SUPABASE_SECRET_KEY,
+            'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+          },
+        });
+        let categoryId: string | null = null;
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (catData && catData.length > 0) {
+            categoryId = catData[0].id;
+          }
+        }
+
+        const insertPayload: any = {
+          restaurant_id: restaurantUuid,
+          name: dishNameSearch,
+          price: Number(updates.price),
+          is_available: updates.isAvailable !== false,
+          is_featured: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        if (categoryId) {
+          insertPayload.category_id = categoryId;
+        }
+
+        const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/dishes`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_SECRET_KEY,
+            'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify(insertPayload),
+        });
+
+        if (insertRes.ok) {
+          const inserted = await insertRes.json();
+          console.log(`✨ [Supabase Cloud] Creado nuevo plato automagicamente:`, inserted);
+          return true;
+        }
+      } catch (insertErr: any) {
+        console.warn('Error auto-creating new dish:', insertErr);
+      }
+    }
+
     return matched;
   } catch (err: any) {
     console.error('[Supabase Cloud Exception]:', err?.message);

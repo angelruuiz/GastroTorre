@@ -362,14 +362,14 @@ function cleanDishName(raw: string): string {
   name = name.replace(/[*_~`•💰✅🚫\n\r]/g, ' ').trim();
   
   // 1. Strip leading conversational phrases & verbs repeatedly
-  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+de)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar|nuevo\s+plato|plato|precio\s+de|precio|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
+  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+de)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar|nuevo\s+plato|plato|precio\s+de|precio|ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?\s+nada\s+de|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|desactivar|quitar|eliminar|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
   
   while (prefixRegex.test(name)) {
     name = name.replace(prefixRegex, '').trim();
   }
   
   // 2. Strip trailing context words (e.g. "como agotada hoy", "para el fin de semana", "a la venta", etc.)
-  const suffixRegex = /(?:\s+(?:como\s+(?:agotad[oa]|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche))$/i;
+  const suffixRegex = /(?:\s+(?:como\s+(?:agotad[oa]s?|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
   name = name.replace(suffixRegex, '').trim();
 
   // 3. Remove leading articles again if any remain
@@ -396,7 +396,7 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
     const clauses = line.split(/\s+(?:y|e|además|tambien|también|,|;)\s+/i);
     for (const clause of clauses) {
       // A. Extracción de precio
-      const priceMatch = clause.match(/(?:•\s*💰\s*|Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
+      const priceMatch = clause.match(/(?:•\s*💰\s*|Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*|\s+pasa\s+a\s+(?:costar\s+)?)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
       if (priceMatch) {
         const rawDish = priceMatch[1];
         const cleaned = cleanDishName(rawDish);
@@ -410,12 +410,16 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
         }
       }
 
-      // B. Extracción de plato agotado
-      const agotadoMatch = clause.match(/(?:marcar\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:agotad[oa]|sin\s+stock|no\s+queda|terminad[oa])/i) ||
+      // B. Extracción de plato/producto agotado (Frases coloquiales y directas)
+      const agotadoMatch = 
+        clause.match(/(?:ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?(?:\s+nada\s+de)?|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|sin\s+stock\s+de|quitar|desactivar|marcar\s+como\s+agotad[oa])\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
+        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:agotad[oa]s?|sin\s+stock|no\s+queda|no\s+quedan|terminad[oa]s?|acabad[oa]s?)/i) ||
         clause.match(/(?:•\s*🚫\s*|agotar|agotad[oa]|sin\s+stock|no\s+queda|terminad[oa])\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+
       if (agotadoMatch) {
-        const cleaned = cleanDishName(agotadoMatch[1]);
-        if (cleaned) {
+        const target = agotadoMatch[1] || agotadoMatch[2];
+        const cleaned = cleanDishName(target);
+        if (cleaned && cleaned.length >= 2) {
           changes.push({
             dishName: cleaned,
             updates: { isAvailable: false }
@@ -424,12 +428,16 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
         }
       }
 
-      // C. Extracción de plato disponible
-      const disponibleMatch = clause.match(/(?:marcar\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|activad[oa]|repuest[oa])/i) ||
+      // C. Extracción de plato/producto disponible o repuesto
+      const disponibleMatch = 
+        clause.match(/(?:ya\s+(?:nos\s+)?ha\s+llegado|volvemos\s+a\s+tener|ya\s+tenemos|vuelve\s+a\s+haber|hemos\s+repuesto|activar|reponer|marcar\s+como\s+disponible)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
+        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|activad[oa]|repuest[oa]|de\s+vuelta)/i) ||
         clause.match(/(?:•\s*✅\s*|disponible|activar|reponer|hay\s+stock|volver\s+a\s+tener)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+
       if (disponibleMatch) {
-        const cleaned = cleanDishName(disponibleMatch[1]);
-        if (cleaned) {
+        const target = disponibleMatch[1] || disponibleMatch[2];
+        const cleaned = cleanDishName(target);
+        if (cleaned && cleaned.length >= 2) {
           changes.push({
             dishName: cleaned,
             updates: { isAvailable: true }

@@ -607,9 +607,23 @@ export async function POST(req: NextRequest) {
         let signStatusLabel = '';
 
         if (isClosure) {
+          let existingHours: any = {};
+          try {
+            const hRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=opening_hours`, {
+              headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+            });
+            if (hRes.ok) {
+              const hData = await hRes.json();
+              if (hData && hData[0]?.opening_hours && typeof hData[0].opening_hours === 'object') {
+                existingHours = hData[0].opening_hours;
+              }
+            }
+          } catch {}
+
           const restRes = await applyRestaurantChangeToSupabase(restaurantUuid, {
-            is_active: false,
+            is_active: true,
             opening_hours: {
+              ...existingHours,
               isTemporarilyClosed: true,
               closedReason: 'Cerrado temporalmente',
             },
@@ -617,20 +631,34 @@ export async function POST(req: NextRequest) {
           if (restRes) {
             restaurantSignUpdated = true;
             signStatusLabel = '🚨 Cartel: CERRADO temporalmente';
-            console.log(`🚨 [Supabase Cloud] Restaurante ${restaurantUuid} marcado como CERRADO (is_active: false)`);
+            console.log(`🚨 [Supabase Cloud] Restaurante ${restaurantUuid} marcado como CERRADO (isTemporarilyClosed: true)`);
           }
         } else if (isOpening) {
+          let existingHours: any = {};
+          try {
+            const hRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=opening_hours`, {
+              headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+            });
+            if (hRes.ok) {
+              const hData = await hRes.json();
+              if (hData && hData[0]?.opening_hours && typeof hData[0].opening_hours === 'object') {
+                existingHours = hData[0].opening_hours;
+              }
+            }
+          } catch {}
+
           const restRes = await applyRestaurantChangeToSupabase(restaurantUuid, {
             is_active: true,
             opening_hours: {
+              ...existingHours,
               isTemporarilyClosed: false,
-              closedReason: undefined,
+              closedReason: null,
             },
           });
           if (restRes) {
             restaurantSignUpdated = true;
             signStatusLabel = '🟢 Cartel: ABIERTO al público';
-            console.log(`🟢 [Supabase Cloud] Restaurante ${restaurantUuid} marcado como ABIERTO (is_active: true)`);
+            console.log(`🟢 [Supabase Cloud] Restaurante ${restaurantUuid} marcado como ABIERTO (isTemporarilyClosed: false)`);
           }
         }
 

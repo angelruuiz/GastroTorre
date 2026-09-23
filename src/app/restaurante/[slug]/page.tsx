@@ -248,6 +248,18 @@ export default function RestaurantDetailPage() {
           </div>
         </div>
 
+        {/* Banner de Aviso si el Restaurante está Cerrado Temporalmente */}
+        {liveStatus && !liveStatus.isOpen && (
+          <div className="mx-4 mt-3 p-3 rounded-2xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/30 flex items-center gap-2.5 text-rose-700 dark:text-rose-300 shadow-sm">
+            <span className="flex h-3 w-3 relative flex-shrink-0">
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+            </span>
+            <div className="text-xs">
+              <span className="font-bold">Aviso del Local:</span> {liveStatus.label}
+            </div>
+          </div>
+        )}
+
         {/* Quick Contact & Action Buttons Bar */}
         {Boolean(
           (restaurant.phone && restaurant.phone.trim().length > 0) ||

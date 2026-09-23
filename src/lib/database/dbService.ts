@@ -179,7 +179,7 @@ export class DatabaseService {
                 r.opening_hours?.is_temporarily_closed ||
                 r.is_active === false
               ),
-              closedReason: r.opening_hours?.closedReason || r.opening_hours?.closed_reason || (r.is_active === false ? 'Cerrado temporalmente' : undefined),
+              closedReason: r.opening_hours?.closedReason || r.opening_hours?.closed_reason || 'Cerrado temporalmente',
             },
             menu: (r.menu_categories || []).map((cat: any) => ({
               id: cat.id,

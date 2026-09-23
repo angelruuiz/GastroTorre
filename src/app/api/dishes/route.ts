@@ -80,6 +80,42 @@ export async function POST(request: Request) {
     let targetCategoryId = category_id;
 
     try {
+      // 1. Check if a dish with the same name already exists to prevent duplicates
+      const searchRes = await fetch(`${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${targetRestaurantId}&name=ilike.${encodeURIComponent(name.trim())}&select=id,name,price&limit=1`, {
+        headers: {
+          'apikey': SUPABASE_SECRET_KEY,
+          'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+        },
+      });
+
+      if (searchRes.ok) {
+        const existingList = await searchRes.json();
+        if (existingList && existingList.length > 0) {
+          const existing = existingList[0];
+          // Update existing dish instead of creating duplicate
+          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/dishes?id=eq.${existing.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_SECRET_KEY,
+              'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify({
+              price: numericPrice,
+              description: description !== undefined ? description : undefined,
+              allergens: allergens !== undefined ? allergens : undefined,
+              photo_url: photo_url !== undefined ? photo_url : undefined,
+              updated_at: new Date().toISOString(),
+            }),
+          });
+          if (patchRes.ok) {
+            const updatedData = await patchRes.json();
+            return NextResponse.json({ success: true, source: 'supabase_updated_existing', data: updatedData?.[0] });
+          }
+        }
+      }
+
       if (!targetCategoryId) {
         const catRes = await fetch(`${SUPABASE_URL}/rest/v1/menu_categories?restaurant_id=eq.${targetRestaurantId}&order=order_index.asc&limit=1`, {
           headers: {

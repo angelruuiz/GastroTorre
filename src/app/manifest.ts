@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Guía Gastronómica y Cartas Digitales de Torrelodones',
     start_url: '/',
     display: 'standalone',
-    background_color: '#252d36',
-    theme_color: '#252d36',
+    background_color: '#0f172a',
+    theme_color: '#0f172a',
     orientation: 'portrait',
     icons: [
       {

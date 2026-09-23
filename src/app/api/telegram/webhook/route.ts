@@ -146,8 +146,17 @@ async function editMessageText(chatId: string | number, messageId: number, text:
   });
 }
 
+function extractRestaurantFromMessage(text: string): { slug: string; uuid: string; name: string } | null {
+  for (const [slug, cfg] of Object.entries(RESTAURANT_CONFIG)) {
+    if (text.includes(cfg.name)) {
+      return { slug, uuid: cfg.uuid, name: cfg.name };
+    }
+  }
+  return null;
+}
+
 // Actualizar en Supabase PostgreSQL en tiempo real (Cloud Serverless)
-async function applyDishChangeToSupabase(dishNameSearch: string, updates: { price?: number; isAvailable?: boolean; photo_url?: string }) {
+async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch: string, updates: { price?: number; isAvailable?: boolean; photo_url?: string }) {
   try {
     const payload: any = {};
     if (updates.price !== undefined) payload.price = Number(updates.price);
@@ -187,7 +196,7 @@ async function applyDishChangeToSupabase(dishNameSearch: string, updates: { pric
 
     let matched = false;
     for (const q of searchQueries) {
-      const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?name=ilike.${q}`;
+      const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.${q}`;
       const res = await fetch(queryUrl, {
         method: 'PATCH',
         headers: {
@@ -212,6 +221,34 @@ async function applyDishChangeToSupabase(dishNameSearch: string, updates: { pric
     return matched;
   } catch (err: any) {
     console.error('[Supabase Cloud Exception]:', err?.message);
+    return false;
+  }
+}
+
+async function applyRestaurantChangeToSupabase(
+  restaurantUuid: string,
+  updates: Record<string, any>
+): Promise<boolean> {
+  try {
+    const payload: Record<string, any> = { ...updates, updated_at: new Date().toISOString() };
+    const queryUrl = `${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}`;
+    const res = await fetch(queryUrl, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data && data.length > 0;
+    }
+    return false;
+  } catch (err: any) {
+    console.error('[Supabase Restaurant Update Error]:', err?.message);
     return false;
   }
 }
@@ -282,6 +319,49 @@ function renderPinesMenu(): string {
   return text;
 }
 
+function classifyTicketType(text: string): { type: string; emoji: string; label: string } {
+  const lower = text.toLowerCase();
+  
+  // Schedule/hours changes
+  if (/horario|hora de apertura|hora de cierre|abrimos|cerramos a las|turno|servicio de/i.test(lower)) {
+    return { type: 'SCHEDULE', emoji: '🕐', label: 'Cambio de Horario' };
+  }
+  // Daily menu
+  if (/men[úu] del d[ií]a|men[úu] de hoy|primeros?.*segundos?|plato del d[ií]a/i.test(lower)) {
+    return { type: 'DAILY_MENU', emoji: '🍽️', label: 'Menú del Día' };
+  }
+  // Temporary closure
+  if (/cerr(amos|ar|ado)\s*(por|esta|la|el|hasta)|vacaciones|cierre temporal|cerrado por/i.test(lower)) {
+    return { type: 'CLOSURE', emoji: '🚨', label: 'Cierre Temporal' };
+  }
+  // Capacity/aforo
+  if (/aforo|capacidad|comensales|plazas|mesas/i.test(lower)) {
+    return { type: 'CAPACITY', emoji: '👥', label: 'Cambio de Aforo' };
+  }
+  // Contact changes
+  if (/tel[ée]fono|whatsapp|n[úu]mero|contacto|email|correo/i.test(lower)) {
+    return { type: 'CONTACT', emoji: '📞', label: 'Cambio de Contacto' };
+  }
+  // Tagline/slogan
+  if (/eslogan|tagline|lema|descripci[óo]n|subt[ií]tulo/i.test(lower)) {
+    return { type: 'TAGLINE', emoji: '📝', label: 'Cambio de Eslogan' };
+  }
+  // Features
+  if (/terraza|parking|wifi|pet friendly|accesible|cel[ií]aco|vegano|caracter[ií]stica/i.test(lower)) {
+    return { type: 'FEATURES', emoji: '🏷️', label: 'Características del Local' };
+  }
+  // Price changes (default dish-level)
+  if (/precio|€|euro|subir|bajar|cambiar? a|poner? a/i.test(lower)) {
+    return { type: 'PRICE', emoji: '💰', label: 'Cambio de Precio' };
+  }
+  // Availability
+  if (/agotad[oa]|disponible|reponer|sin stock|terminad[oa]/i.test(lower)) {
+    return { type: 'AVAILABILITY', emoji: '🔄', label: 'Disponibilidad de Plato' };
+  }
+  // Generic
+  return { type: 'GENERAL', emoji: '💬', label: 'Solicitud General' };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const update = await req.json();
@@ -312,10 +392,19 @@ export async function POST(req: NextRequest) {
         const extracted = extractChangesFromMessage(messageText);
         console.log(`⚡ [Cloud Webhook] Extracted ${extracted.length} changes from message:`, extracted);
 
+        const restaurantInfo = extractRestaurantFromMessage(messageText);
+        const restaurantUuid = restaurantInfo?.uuid || 'a1000000-0000-0000-0000-000000000001';
+
         let updatedCount = 0;
         for (const item of extracted) {
-          const success = await applyDishChangeToSupabase(item.dishName, item.updates);
+          const success = await applyDishChangeToSupabase(restaurantUuid, item.dishName, item.updates);
           if (success) updatedCount++;
+        }
+
+        const chatIdMatch = messageText.match(/ID:\s*`(\d+)`/);
+        const hosteleroChatId = chatIdMatch?.[1];
+        if (hosteleroChatId) {
+          await sendMessage(hosteleroChatId, `✅ *¡Cambios publicados!*\n\nTu solicitud ha sido aprobada y los cambios ya están visibles en tu carta digital en vivo.\n\n🔗 https://gastrotorre.vercel.app`);
         }
 
         await answerCallbackQuery(callback.id, `✅ ¡${updatedCount} cambios aplicados y publicados en vivo!`);
@@ -348,6 +437,12 @@ export async function POST(req: NextRequest) {
           messageId,
           `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n❌ *ESTADO: RECHAZADO POR SUPERADMIN*\n🕒 ${new Date().toLocaleTimeString('es-ES')}`
         );
+
+        const chatIdMatch = messageText.match(/ID:\s*`(\d+)`/);
+        const hosteleroChatId = chatIdMatch?.[1];
+        if (hosteleroChatId) {
+          await sendMessage(hosteleroChatId, `ℹ️ *Solicitud revisada*\n\nTu petición ha sido revisada pero no se han aplicado cambios en esta ocasión. Si necesitas ayuda, envía un nuevo mensaje con más detalle.`);
+        }
 
         return NextResponse.json({ ok: true, status: 'rejected' });
       }
@@ -389,6 +484,19 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
 
 4️⃣ *Añadir fotos:*
 👉 Envía una foto del plato con el nombre en el pie de foto.
+
+5️⃣ *Cambiar horarios:*
+👉 _"La semana que viene abrimos de 13:00 a 16:00 solo almuerzos"_
+
+6️⃣ *Menú del día:*
+👉 _"Menú de hoy: primeros sopa y ensalada, segundos pollo y merluza, postre flan, 14.50€"_
+
+7️⃣ *Cierre temporal:*
+👉 _"Cerramos del 1 al 7 de octubre por vacaciones"_
+
+8️⃣ *Cambiar aforo, eslogan o contacto:*
+👉 _"Nuevo WhatsApp: 612 345 678"_
+👉 _"Cambia nuestro eslogan a: La mejor carne de la Sierra"_
 
 ⚡ _Todo se publica automáticamente en tu carta digital 24/7._`;
         await sendMessage(chatId, helpText);
@@ -504,7 +612,8 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
       }
 
       const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
-      const summary = `• 💬 *Petición:* "${text || '📸 Foto adjunta'}"`;
+      const ticketType = classifyTicketType(text);
+      const summary = `• ${ticketType.emoji} *Tipo:* ${ticketType.label}\n• 💬 *Petición:* "${text || '📸 Foto adjunta'}"`;
 
       // Avisar al hostelero
       await sendMessage(
@@ -518,10 +627,11 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
 ━━━━━━━━━━━━━━━━━━━━
 🏠 *Restaurante:* ${binding.restaurantName} (✅ *Oficial*)
 👤 *Hostelero:* ${username} (ID: \`${chatId}\`)
+${ticketType.emoji} *Categoría:* ${ticketType.label}
 💬 *Mensaje:*
 _${text || '📸 [Foto enviada por hostelero]'}_
 
-🤖 *Cambios a aplicar en tiempo real:*
+🤖 *Cambios detectados:*
 ${summary}
 ━━━━━━━━━━━━━━━━━━━━
 ☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;

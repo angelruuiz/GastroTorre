@@ -76,7 +76,25 @@ export async function POST(request: Request) {
       );
     }
 
+    const targetRestaurantId = restaurant_id || 'a1000000-0000-0000-0000-000000000001';
+    let targetCategoryId = category_id;
+
     try {
+      if (!targetCategoryId) {
+        const catRes = await fetch(`${SUPABASE_URL}/rest/v1/menu_categories?restaurant_id=eq.${targetRestaurantId}&order=order_index.asc&limit=1`, {
+          headers: {
+            'apikey': SUPABASE_SECRET_KEY,
+            'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+          },
+        });
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (catData && catData.length > 0) {
+            targetCategoryId = catData[0].id;
+          }
+        }
+      }
+
       const res = await fetch(`${SUPABASE_URL}/rest/v1/dishes`, {
         method: 'POST',
         headers: {
@@ -86,8 +104,8 @@ export async function POST(request: Request) {
           'Prefer': 'return=representation',
         },
         body: JSON.stringify({
-          restaurant_id: restaurant_id || 'a1000000-0000-0000-0000-000000000001',
-          category_id: category_id || null,
+          restaurant_id: targetRestaurantId,
+          category_id: targetCategoryId,
           name,
           description: description || '',
           price: numericPrice,

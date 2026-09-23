@@ -175,13 +175,19 @@ async function clearPendingDishWizard(chatId: string) {
 function detectAddDishWithoutPrice(text: string): string | null {
   if (!text) return null;
   const clean = text.trim();
-  // If price is already present in text, let standard price parsing handle it
-  if (/\d+[\.,]?\d*\s*(?:€|euros?|EUR)/i.test(clean) || /(?:precio\s*[:=]?\s*\d+|a\s+\d+[\.,]?\d*)/i.test(clean)) {
+  
+  // Check if text already has an explicit price specification (e.g. 12€, 12.50 euros, precio: 12, a 12€)
+  const hasExplicitPrice = 
+    /\d+[\.,]?\d*\s*(?:€|euros?|EUR)\b/i.test(clean) || 
+    /\b(?:precio|cuesta|vale)\s*[:=]?\s*\d+/i.test(clean) ||
+    /\b(?:a|pasa\s+a)\s+\d+(?:[\.,]\d{1,2})?\s*(?:€|euros?|EUR)?\s*$/i.test(clean);
+
+  if (hasExplicitPrice) {
     return null;
   }
 
   // Common phrases for adding / creating a dish
-  const addPattern = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|por\s+favor|porfa|oye)?[\s,:\-]*(?:quiero\s+añadir|quiero\s+poner|quiero\s+meter|quiero\s+crear|añad(?:e|ir|eme|irme|enos)?|agreg(?:a|ar|ame|arnos)?|crea(?:r|nos)?|met(?:e|er|ernos)?|pon(?:er)?\s+nuevo\s+plato|sub(?:e|ir)\s+nuevo\s+plato|nuevo\s+plato|plato\s+nuevo|incluy(?:e|ir))\s+(?:un|una|el|la|los|las|nuevo\s+plato\s+de\s+|nuevo\s+plato\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s+a\s+la\s+carta|\s+en\s+la\s+carta|\s+al\s+men[úu]|\s+en\s+el\s+men[úu]|\s+a\s+nuestra\s+carta|\s+por\s+favor|\s+gracias)?$/i;
+  const addPattern = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|por\s+favor|porfa|oye)?[\s,:\-]*(?:quiero\s+añadir|quiero\s+poner|quiero\s+meter|quiero\s+crear|añad(?:e|ir|eme|irme|enos)?|agreg(?:a|ar|ame|arnos)?|crea(?:r|nos)?|met(?:e|er|ernos)?|pon(?:er)?\s+nuevo\s+plato|pon(?:er)?(?:\s+en\s+la\s+carta|\s+a\s+la\s+carta)?|sub(?:e|ir)\s+nuevo\s+plato|nuevo\s+plato|plato\s+nuevo|incluy(?:e|ir))\s+(?:un|una|el|la|los|las|nuevo\s+plato\s+de\s+|nuevo\s+plato\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s+a\s+la\s+carta|\s+en\s+la\s+carta|\s+al\s+men[úu]|\s+en\s+el\s+men[úu]|\s+a\s+nuestra\s+carta|\s+por\s+favor|\s+gracias)?$/i;
 
   const match = clean.match(addPattern);
   if (match) {

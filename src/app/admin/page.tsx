@@ -129,6 +129,8 @@ export default function AdminPage() {
 
   // Metrics period filter state
   const [metricsPeriod, setMetricsPeriod] = useState<'30d' | 'weekend' | 'all'>('30d');
+  const [realtimeStats, setRealtimeStats] = useState<any | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   // Hostelero tabs & modals state
   const [activeTab, setActiveTab] = useState<'menu' | 'daily-menu' | 'stats' | 'info' | 'qr' | 'help'>('menu');
@@ -576,20 +578,44 @@ export default function AdminPage() {
     triggerToast('¡Menú del día actualizado y publicado!');
   };
 
+  // Fetch real-time analytics from Supabase Cloud
+  useEffect(() => {
+    const targetSlug = selectedRestId || currentRestaurant?.slug || currentRestaurant?.id || '';
+    if (!targetSlug) return;
+
+    let isMounted = true;
+    setIsLoadingStats(true);
+    fetch(`/api/analytics?slug=${encodeURIComponent(targetSlug)}&period=${metricsPeriod}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data && data.success && data.stats) {
+          setRealtimeStats(data.stats);
+        }
+      })
+      .catch((err) => console.warn('Error loading live metrics:', err))
+      .finally(() => {
+        if (isMounted) setIsLoadingStats(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedRestId, currentRestaurant?.slug, currentRestaurant?.id, metricsPeriod, activeTab, adminTab]);
+
   // Rich computed metrics for the current restaurant
-  const rawViews = currentRestaurant.stats?.monthlyViews || 1284;
-  const qrScans = currentRestaurant.stats?.monthlyQrScans || Math.round(rawViews * 0.94);
-  const webReads = currentRestaurant.stats?.monthlyWebReads || Math.round(rawViews * 0.06);
-  const uniqueDin = currentRestaurant.stats?.uniqueVisitors || Math.round(rawViews * 0.72);
-  const callsCount = currentRestaurant.stats?.phoneCalls || Math.round(rawViews * 0.068);
-  const waCount = currentRestaurant.stats?.whatsappClicks || Math.round(rawViews * 0.128);
-  const gpsCount = currentRestaurant.stats?.directionsClicks || Math.round(rawViews * 0.074);
-  const revCount = currentRestaurant.stats?.googleReviewsClicks || Math.round(rawViews * 0.036);
-  const shareCount = currentRestaurant.stats?.sharesCount || Math.round(rawViews * 0.03);
+  const rawViews = realtimeStats?.monthlyViews ?? (currentRestaurant.stats?.monthlyViews || 1284);
+  const qrScans = realtimeStats?.monthlyQrScans ?? (currentRestaurant.stats?.monthlyQrScans || Math.round(rawViews * 0.94));
+  const webReads = realtimeStats?.monthlyWebReads ?? (currentRestaurant.stats?.monthlyWebReads || Math.round(rawViews * 0.06));
+  const uniqueDin = realtimeStats?.uniqueVisitors ?? (currentRestaurant.stats?.uniqueVisitors || Math.round(rawViews * 0.72));
+  const callsCount = realtimeStats?.phoneCalls ?? (currentRestaurant.stats?.phoneCalls || Math.round(rawViews * 0.068));
+  const waCount = realtimeStats?.whatsappClicks ?? (currentRestaurant.stats?.whatsappClicks || Math.round(rawViews * 0.128));
+  const gpsCount = realtimeStats?.directionsClicks ?? (currentRestaurant.stats?.directionsClicks || Math.round(rawViews * 0.074));
+  const revCount = realtimeStats?.googleReviewsClicks ?? (currentRestaurant.stats?.googleReviewsClicks || Math.round(rawViews * 0.036));
+  const shareCount = realtimeStats?.sharesCount ?? (currentRestaurant.stats?.sharesCount || Math.round(rawViews * 0.03));
   const totalActionsCount = callsCount + waCount + gpsCount + revCount + shareCount;
-  const conversionPct = ((totalActionsCount / rawViews) * 100).toFixed(1);
-  const estRevenue = Math.round(totalActionsCount * 14.8);
-  const paperSaved = Math.round(rawViews * 0.35);
+  const conversionPct = rawViews > 0 ? ((totalActionsCount / rawViews) * 100).toFixed(1) : '0.0';
+  const estRevenue = realtimeStats?.estimatedRevenueEuros ?? Math.round(totalActionsCount * 14.8);
+  const paperSaved = realtimeStats?.paperSaved ?? Math.round(rawViews * 0.35);
 
   // Compute top dishes dynamically from menu
   const allCurrentDishes = currentRestaurant.menu?.flatMap((cat) => 
@@ -611,11 +637,11 @@ export default function AdminPage() {
           category: d.category,
           price: d.price,
           views: baseViews,
-          percentage: Math.round((baseViews / rawViews) * 100),
+          percentage: rawViews > 0 ? Math.round((baseViews / rawViews) * 100) : 0,
         };
       });
 
-  const weeklyScansList = currentRestaurant.stats?.scansByDay || [
+  const weeklyScansList = realtimeStats?.scansByDay || currentRestaurant.stats?.scansByDay || [
     { day: 'Lun', count: Math.round(rawViews * 0.04), isPeak: false },
     { day: 'Mar', count: Math.round(rawViews * 0.06), isPeak: false },
     { day: 'Mié', count: Math.round(rawViews * 0.09), isPeak: false },
@@ -625,7 +651,10 @@ export default function AdminPage() {
     { day: 'Dom', count: Math.round(rawViews * 0.14), isPeak: true },
   ];
 
-  const stats = {
+  const stats = realtimeStats ? {
+    ...realtimeStats,
+    topDishes: topDishesList,
+  } : {
     monthlyViews: rawViews,
     monthlyQrScans: qrScans,
     monthlyWebReads: webReads,
@@ -2123,8 +2152,8 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-2 pt-1">
-              {stats.scansByDay.map((item) => {
-                const maxCount = Math.max(...stats.scansByDay.map((s) => s.count));
+              {stats.scansByDay.map((item: any) => {
+                const maxCount = Math.max(...stats.scansByDay.map((s: any) => s.count), 1);
                 const percentage = Math.round((item.count / maxCount) * 100);
                 return (
                   <div key={item.day} className="space-y-1">
@@ -2196,7 +2225,7 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-2.5">
-              {stats.popularFilters.map((filt) => (
+              {stats.popularFilters.map((filt: any) => (
                 <div key={filt.filter} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-slate-700">{filt.filter}</span>

@@ -199,21 +199,40 @@ async function applyDishChangeToSupabase(
       .split(/\s+/)
       .filter((w) => w.length >= 3 && !genericWords.has(w.toLowerCase()));
 
+    const singularize = (w: string) => {
+      if (w.toLowerCase().endsWith('es') && w.length > 4) return w.slice(0, -2);
+      if (w.toLowerCase().endsWith('s') && w.length > 3) return w.slice(0, -1);
+      return w;
+    };
+
     // Try multiple search strategies from most specific to broader
     const searchQueries: string[] = [];
 
     // 1. Compound: top 2 distinctive words (*Avocado*Toast* or *Salmón*Ahumado*)
     if (words.length >= 2) {
       searchQueries.push(`*${encodeURIComponent(words[0])}*${encodeURIComponent(words[1])}*`);
+      const s0 = singularize(words[0]);
+      const s1 = singularize(words[1]);
+      if (s0 !== words[0] || s1 !== words[1]) {
+        searchQueries.push(`*${encodeURIComponent(s0)}*${encodeURIComponent(s1)}*`);
+      }
     }
-    // 2. Single most distinctive word (e.g. *Avocado*, *Salmón*, *Bogavante*, *Tartar*, *Diavola*)
-    if (words.length >= 1) {
-      searchQueries.push(`*${encodeURIComponent(words[0])}*`);
+
+    // 2. Individual words and their singular forms (e.g. *Botellas* -> *Botella*)
+    for (const w of words) {
+      searchQueries.push(`*${encodeURIComponent(w)}*`);
+      const s = singularize(w);
+      if (s !== w) {
+        searchQueries.push(`*${encodeURIComponent(s)}*`);
+      }
     }
+
     // 3. First non-empty word fallback
     const firstWord = dishNameSearch.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, '').trim().split(/\s+/)[0];
     if (firstWord && !searchQueries.some(q => q.includes(encodeURIComponent(firstWord)))) {
       searchQueries.push(`*${encodeURIComponent(firstWord)}*`);
+      const sFirst = singularize(firstWord);
+      if (sFirst !== firstWord) searchQueries.push(`*${encodeURIComponent(sFirst)}*`);
     }
 
     for (const q of searchQueries) {
@@ -368,8 +387,8 @@ function cleanDishName(raw: string): string {
     name = name.replace(prefixRegex, '').trim();
   }
   
-  // 2. Strip trailing context words (e.g. "como agotada hoy", "para el fin de semana", "a la venta", etc.)
-  const suffixRegex = /(?:\s+(?:como\s+(?:agotad[oa]s?|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
+  // 2. Strip trailing context words (e.g. ": Marcar Agotado", "como agotada hoy", "para el fin de semana", etc.)
+  const suffixRegex = /(?:[\s,:\-]+(?:como\s+(?:agotad[oa]s?|disponible)|marcar\s+(?:como\s+)?(?:agotad[oa]s?|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
   name = name.replace(suffixRegex, '').trim();
 
   // 3. Remove leading articles again if any remain

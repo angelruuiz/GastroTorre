@@ -105,6 +105,179 @@ async function savePersistentBinding(chatId: string, restaurantSlug: string, res
   }
 }
 
+// --------------------------------------------------------------------------
+// Conversational Dish Wizard & Allergen Extraction Helpers
+// --------------------------------------------------------------------------
+
+async function getPendingDishWizard(chatId: string): Promise<{ dishName: string; price: number; restaurantSlug: string } | null> {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/analytics_events?event_type=eq.pending_dish_wizard&user_agent=like.wizard:${encodeURIComponent(chatId)}:*&order=created_at.desc&limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const parts = (data[0].user_agent || '').split(':');
+        if (parts.length >= 5) {
+          const restaurantSlug = parts[2];
+          const dishName = decodeURIComponent(parts[3]);
+          const price = parseFloat(parts[4]);
+          return { dishName, price, restaurantSlug };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error fetching pending wizard:', e);
+  }
+  return null;
+}
+
+async function savePendingDishWizard(chatId: string, restaurantSlug: string, dishName: string, price: number) {
+  try {
+    const restaurantUuid = RESTAURANT_CONFIG[restaurantSlug]?.uuid || 'a1000000-0000-0000-0000-000000000001';
+    await fetch(`${SUPABASE_URL}/rest/v1/analytics_events`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        restaurant_id: restaurantUuid,
+        event_type: 'pending_dish_wizard',
+        user_agent: `wizard:${chatId}:${restaurantSlug}:${encodeURIComponent(dishName)}:${price}`,
+      }),
+    });
+  } catch (e) {
+    console.warn('Error saving pending wizard:', e);
+  }
+}
+
+async function clearPendingDishWizard(chatId: string) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/analytics_events?event_type=eq.pending_dish_wizard&user_agent=like.wizard:${encodeURIComponent(chatId)}:*`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+      },
+    });
+  } catch (e) {
+    console.warn('Error clearing pending wizard:', e);
+  }
+}
+
+function parseAllergens(text: string): string[] {
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const detected = new Set<string>();
+
+  const hasAllergen = (regex: RegExp) => {
+    const globalRegex = new RegExp(regex.source, 'gi');
+    let m: RegExpExecArray | null;
+    while ((m = globalRegex.exec(lower)) !== null) {
+      const start = Math.max(0, m.index - 25);
+      const prefix = lower.substring(start, m.index);
+      if (!/sin\s+|libre\s+de\s+|no\s+lleva\s+|no\s+contiene\s+|apto\s+para\s+cel[ií]acos/i.test(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (hasAllergen(/gluten|trigo|harina|pan|centeno|cebada|avena|espelta|pasta|rebozad|croqueta|panko/i)) detected.add('gluten');
+  if (hasAllergen(/l[aá]cteo|lactosa|leche|queso|mantequilla|nata|yogur|parmesano|mozzarella|gorgonzola/i)) detected.add('lactosa');
+  if (hasAllergen(/huevo|huevos|yema|clara|mayonesa|alioli|tortilla/i)) detected.add('huevo');
+  if (hasAllergen(/pescado|at[uú]n|merluza|bacalao|salm[oó]n|anchoa|lubina|dorada|bonito/i)) detected.add('pescado');
+  if (hasAllergen(/crust[aá]ceo|marisco|gamba|langostino|camar[oó]n|bogavante|cigala|carabinero|cangrejo/i)) detected.add('crustaceos');
+  if (hasAllergen(/molusco|pulpo|calamar|chipir[oó]n|sepia|mejill[oó]n|almeja|berberecho|zamburiña|ostra/i)) detected.add('moluscos');
+  if (hasAllergen(/fruto.*seco|almendra|nuez|nueces|pistacho|avellana|anacardo|piñ[oó]n/i)) detected.add('frutos-secos');
+  if (hasAllergen(/cacahuete|man[ií]/i)) detected.add('cacahuetes');
+  if (hasAllergen(/soja|tofu|edamame/i)) detected.add('soja');
+  if (hasAllergen(/apio/i)) detected.add('apio');
+  if (hasAllergen(/mostaza|dijon/i)) detected.add('mostaza');
+  if (hasAllergen(/s[eé]samo|ajonjol[ií]|tahini/i)) detected.add('sesamo');
+  if (hasAllergen(/sulfito|vino|vinagre/i)) detected.add('sulfitos');
+  if (hasAllergen(/altramuz|altramuces/i)) detected.add('altramuces');
+
+  return Array.from(detected);
+}
+
+function cleanDescription(text: string): string {
+  if (!text) return '';
+  let desc = text.trim();
+  desc = desc.replace(/[*_~`]/g, '').trim();
+  desc = desc.replace(/(?:al[ée]rgenos?|alergias?|contiene\s+al[ée]rgenos?|lleva\s+al[ée]rgenos?)\s*[:\-].*$/i, '').trim();
+  desc = desc.replace(/^(?:1[.)\-:]\s*|\bdescripci[óo]n\s*[:\-]\s*)/i, '').trim();
+  desc = desc.replace(/[,;\-]+$/, '').trim();
+  if (desc.length > 0) {
+    desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+  }
+  return desc;
+}
+
+async function findExistingDish(restaurantUuid: string, dishName: string): Promise<any | null> {
+  const genericWords = new Set([
+    'tosta', 'tostas', 'pizza', 'pizzas', 'burger', 'burgers', 'ensalada', 'ensaladas',
+    'tarta', 'tartas', 'arroz', 'arroces', 'plato', 'platos', 'racion', 'raciones',
+    'de', 'del', 'la', 'el', 'las', 'los', 'con', 'y', 'en', 'sobre', 'al', 'a', 'para',
+    'nuestro', 'nuestros', 'nuestra', 'nuestras', 'casa', 'especial',
+    'poner', 'pon', 'sube', 'subir', 'bajar', 'cambiar', 'cambia', 'hola', 'favor', 'porfa', 'nuevo', 'precio'
+  ]);
+
+  const words = dishName
+    .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !genericWords.has(w.toLowerCase()));
+
+  const singularize = (w: string) => {
+    if (w.toLowerCase().endsWith('es') && w.length > 4) return w.slice(0, -2);
+    if (w.toLowerCase().endsWith('s') && w.length > 3) return w.slice(0, -1);
+    return w;
+  };
+
+  const searchQueries: string[] = [];
+  if (words.length >= 2) {
+    searchQueries.push(`*${encodeURIComponent(words[0])}*${encodeURIComponent(words[1])}*`);
+    const s0 = singularize(words[0]);
+    const s1 = singularize(words[1]);
+    if (s0 !== words[0] || s1 !== words[1]) {
+      searchQueries.push(`*${encodeURIComponent(s0)}*${encodeURIComponent(s1)}*`);
+    }
+  }
+
+  for (const w of words) {
+    searchQueries.push(`*${encodeURIComponent(w)}*`);
+    const s = singularize(w);
+    if (s !== w) searchQueries.push(`*${encodeURIComponent(s)}*`);
+  }
+
+  for (const q of searchQueries) {
+    try {
+      const getUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.${q}&select=id,name,price,description,allergens&limit=1`;
+      const getRes = await fetch(getUrl, {
+        headers: {
+          'apikey': SUPABASE_SECRET_KEY,
+          'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+        },
+      });
+      if (getRes.ok) {
+        const found = await getRes.json();
+        if (found && found.length > 0) {
+          return found[0];
+        }
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
 // Helper to call Telegram API
 async function apiCall(method: string, body: Record<string, any> = {}) {
   try {
@@ -176,13 +349,15 @@ function extractRestaurantFromMessage(text: string): { slug: string; uuid: strin
 async function applyDishChangeToSupabase(
   restaurantUuid: string,
   dishNameSearch: string,
-  updates: { price?: number; isAvailable?: boolean; photo_url?: string }
+  updates: { price?: number; isAvailable?: boolean; photo_url?: string; description?: string; allergens?: string[] }
 ): Promise<{ success: boolean; dishId?: string; dishName?: string; previousPrice?: number; newPrice?: number; isNew?: boolean }> {
   try {
     const payload: any = {};
     if (updates.price !== undefined) payload.price = Number(updates.price);
     if (updates.isAvailable !== undefined) payload.is_available = updates.isAvailable;
     if (updates.photo_url !== undefined) payload.photo_url = updates.photo_url;
+    if (updates.description !== undefined) payload.description = updates.description;
+    if (updates.allergens !== undefined) payload.allergens = updates.allergens;
     payload.updated_at = new Date().toISOString();
 
     const genericWords = new Set([
@@ -301,6 +476,8 @@ async function applyDishChangeToSupabase(
           restaurant_id: restaurantUuid,
           name: cleanName || dishNameSearch,
           price: Number(updates.price),
+          description: updates.description || 'Especialidad de la casa elaborada con ingredientes seleccionados.',
+          allergens: updates.allergens || [],
           is_available: updates.isAvailable !== false,
           is_featured: false,
           created_at: new Date().toISOString(),
@@ -402,8 +579,36 @@ function cleanDishName(raw: string): string {
   return name;
 }
 
-function extractChangesFromMessage(text: string): Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> {
-  const changes: Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> = [];
+function extractChangesFromMessage(text: string): Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string; description?: string; allergens?: string[] } }> {
+  const changes: Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string; description?: string; allergens?: string[] } }> = [];
+
+  // Check if it's a rich new dish ticket card
+  const platoMatch = text.match(/[•\s]*🍽️\s*\*?(?:Nombre|Plato)\*?:\s*\*?([^*\n]+?)\*?(?:\s*\(([\d\.,]+)\s*€\))?(?:\n|$)/i);
+  const descMatch = text.match(/[•\s]*📝\s*\*?Descripci[óo]n\*?:\s*([^\n]+)/i);
+  const alergMatch = text.match(/[•\s]*🏷️\s*\*?Al[ée]rgenos\*?:\s*([^\n]+)/i);
+  const newPriceMatch = text.match(/[•\s]*💰\s*\*?Precio\*?:\s*([\d\.,]+)\s*€/i);
+
+  if (platoMatch) {
+    const dishName = cleanDishName(platoMatch[1]);
+    const priceStr = platoMatch[2] || (newPriceMatch ? newPriceMatch[1] : null);
+    const priceVal = priceStr ? parseFloat(priceStr.replace(',', '.')) : undefined;
+    const desc = descMatch ? cleanDescription(descMatch[1]) : undefined;
+    const allergens = alergMatch ? parseAllergens(alergMatch[1]) : undefined;
+
+    if (dishName) {
+      changes.push({
+        dishName,
+        updates: {
+          price: priceVal,
+          description: desc,
+          allergens: allergens,
+          isAvailable: true,
+        },
+      });
+      return changes;
+    }
+  }
+
   const lines = text.split('\n');
 
   for (const rawLine of lines) {
@@ -979,14 +1184,71 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
         return NextResponse.json({ ok: true });
       }
 
+      const restaurantUuid = RESTAURANT_CONFIG[binding.restaurantSlug]?.uuid || 'a1000000-0000-0000-0000-000000000001';
+
+      // Comando /cancel o cancelar
+      if (text.startsWith('/cancel') || text.toLowerCase() === 'cancelar') {
+        await clearPendingDishWizard(chatId);
+        await sendMessage(chatId, '❌ *Operación cancelada.*\nPuedes enviarme cualquier cambio o consulta cuando quieras.');
+        return NextResponse.json({ ok: true });
+      }
+
+      // 1. GESTIÓN DE WIZARD ACTIVO (El hostelero está respondiendo descripción y alérgenos de un nuevo plato)
+      const pendingWizard = await getPendingDishWizard(chatId);
+      if (pendingWizard) {
+        await clearPendingDishWizard(chatId);
+
+        const allergens = parseAllergens(text);
+        const description = cleanDescription(text) || 'Especialidad de la casa elaborada con ingredientes seleccionados.';
+        const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        const allergensLabel = allergens.length > 0
+          ? allergens.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join(', ')
+          : 'Ninguno declarado';
+
+        const summary = 
+`• ✨ *Tipo:* Alta de Nuevo Plato (Ficha Completa)
+• 🍽️ *Plato:* *${pendingWizard.dishName}*
+• 💰 *Precio:* ${pendingWizard.price.toFixed(2)} €
+• 📝 *Descripción:* ${description}
+• 🏷️ *Alérgenos:* ${allergensLabel}`;
+
+        await sendMessage(
+          chatId,
+          `✅ *¡Ficha completada para tu nuevo plato!* (#${ticketId})\n\n🍽️ *Plato:* *${pendingWizard.dishName}* (${pendingWizard.price.toFixed(2)} €)\n📝 *Descripción:* _${description}_\n🏷️ *Alérgenos:* ${allergensLabel}\n\n⏳ Tu solicitud ha sido enviada al Superadmin para su validación y publicación en directo en tu carta digital.`
+        );
+
+        const adminNotificationText = 
+`🎫 *TICKET CLOUD #${ticketId} — ${binding.restaurantName}*
+━━━━━━━━━━━━━━━━━━━━
+🏠 *Restaurante:* ${binding.restaurantName} (✅ *Oficial*)
+👤 *Hostelero:* ${username} (ID: \`${chatId}\`)
+✨ *Categoría:* Alta de Nuevo Plato (Ficha Completa)
+💬 *Mensaje Original:*
+_${text}_
+
+🤖 *Detalles del Nuevo Plato:*
+${summary.trim()}
+━━━━━━━━━━━━━━━━━━━━
+☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;
+
+        const keyboard = {
+          inline_keyboard: [
+            [
+              { text: '✅ Aprobar y Publicar en Web', callback_data: `app_${ticketId}` },
+              { text: '❌ Rechazar Solicitud', callback_data: `rej_${ticketId}` },
+            ],
+          ],
+        };
+
+        await sendMessage(ADMIN_CHAT_ID, adminNotificationText, keyboard);
+        return NextResponse.json({ ok: true, ticketId });
+      }
+
       // Comando /carta: Listar carta actual para el hostelero
       if (text.startsWith('/carta')) {
         try {
-          const restaurantUuid = RESTAURANT_CONFIG[binding.restaurantSlug]?.uuid;
-          const queryUrl = restaurantUuid 
-            ? `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&select=name,price,is_available&order=name.asc`
-            : `${SUPABASE_URL}/rest/v1/dishes?select=name,price,is_available&limit=15`;
-          
+          const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&select=name,price,is_available&order=name.asc`;
           const res = await fetch(queryUrl, {
             headers: {
               'apikey': SUPABASE_SECRET_KEY,
@@ -1013,8 +1275,35 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
 
       const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
       const ticketType = classifyTicketType(text);
-      
       const detected = extractChangesFromMessage(text);
+
+      // 2. DETECCIÓN PROACTIVA DE NUEVO PLATO NO EXISTENTE EN CARTA
+      // Si el hostelero pide añadir un plato que NO está en su menú, preguntar por descripción y alérgenos
+      if (detected.length > 0) {
+        for (const item of detected) {
+          if (item.updates.price !== undefined) {
+            const existingDish = await findExistingDish(restaurantUuid, item.dishName);
+            if (!existingDish) {
+              // Es un plato nuevo
+              const hasExplicitDetails = /al[ée]rgenos?|alergias?|ingredientes?|descripci[óo]n|con base de|elaborad[oa]|preparad[oa]/i.test(text) || text.length >= 80;
+              if (!hasExplicitDetails) {
+                // Activar wizard para pedir descripción y alérgenos
+                await savePendingDishWizard(chatId, binding.restaurantSlug, item.dishName, item.updates.price);
+                await sendMessage(
+                  chatId,
+                  `✨ *¡Nuevo plato detectado para tu carta!*\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Plato:* *${item.dishName}*\n💰 *Precio:* *${Number(item.updates.price).toFixed(2)} €*\n\nPara mantener la estética limpia de tu carta y cumplir con la **Normativa de Alérgenos (Reglamento UE 1169/2011)**, por favor indícanos:\n\n1️⃣ *Descripción / ingredientes:* (ej: _"Tarta tradicional con base de almendras y canela"_)\n2️⃣ *Alérgenos que contiene:* (ej: _"Gluten, lácteos, huevo, frutos secos"_ o escribe _"Ninguno"_)\n\n✍️ _Responde a este mensaje con los detalles._`
+                );
+                return NextResponse.json({ ok: true, status: 'awaiting_dish_details' });
+              } else {
+                // Ya incluyó los detalles en el mismo mensaje
+                item.updates.description = cleanDescription(text);
+                item.updates.allergens = parseAllergens(text);
+              }
+            }
+          }
+        }
+      }
+
       let summary = `• ${ticketType.emoji} *Tipo:* ${ticketType.label}\n`;
 
       if (ticketType.type === 'CLOSURE') {
@@ -1025,14 +1314,23 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
 
       if (detected.length > 0) {
         for (const item of detected) {
-          if (item.updates.price !== undefined) {
-            summary += `• 💰 *${item.dishName}:* ${Number(item.updates.price).toFixed(2)} €\n`;
-          }
-          if (item.updates.isAvailable === false) {
-            summary += `• 🚫 *${item.dishName}:* Marcar Agotado\n`;
-          }
-          if (item.updates.isAvailable === true) {
-            summary += `• ✅ *${item.dishName}:* Marcar Disponible\n`;
+          if (item.updates.description || item.updates.allergens) {
+            summary += `• 🍽️ *Plato:* *${item.dishName}*\n`;
+            if (item.updates.price !== undefined) {
+              summary += `• 💰 *Precio:* ${Number(item.updates.price).toFixed(2)} €\n`;
+            }
+            summary += `• 📝 *Descripción:* ${item.updates.description || 'Especialidad de la casa'}\n`;
+            summary += `• 🏷️ *Alérgenos:* ${item.updates.allergens && item.updates.allergens.length > 0 ? item.updates.allergens.join(', ') : 'Ninguno declarado'}\n`;
+          } else {
+            if (item.updates.price !== undefined) {
+              summary += `• 💰 *${item.dishName}:* ${Number(item.updates.price).toFixed(2)} €\n`;
+            }
+            if (item.updates.isAvailable === false) {
+              summary += `• 🚫 *${item.dishName}:* Marcar Agotado\n`;
+            }
+            if (item.updates.isAvailable === true) {
+              summary += `• ✅ *${item.dishName}:* Marcar Disponible\n`;
+            }
           }
         }
       } else if (ticketType.type !== 'CLOSURE' && ticketType.type !== 'OPENING') {

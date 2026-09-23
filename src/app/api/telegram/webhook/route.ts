@@ -305,7 +305,36 @@ async function applyRestaurantChangeToSupabase(
   }
 }
 
-// Extractor resiliente multilínea de cambios desde el mensaje de Superadmin (Stateless Serverless)
+function cleanDishName(raw: string): string {
+  if (!raw) return '';
+  let name = raw.trim();
+
+  // Remove markdown, emojis and symbols
+  name = name.replace(/[*_~`•💰✅🚫\n\r]/g, ' ').trim();
+  
+  // 1. Strip leading conversational phrases & verbs repeatedly
+  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+de)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar|nuevo\s+plato|plato|precio\s+de|precio|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
+  
+  while (prefixRegex.test(name)) {
+    name = name.replace(prefixRegex, '').trim();
+  }
+  
+  // 2. Strip trailing context words (e.g. "como agotada hoy", "para el fin de semana", "a la venta", etc.)
+  const suffixRegex = /(?:\s+(?:como\s+(?:agotad[oa]|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche))$/i;
+  name = name.replace(suffixRegex, '').trim();
+
+  // 3. Remove leading articles again if any remain
+  name = name.replace(/^(?:el|la|los|las|un|una|unos|unas)\s+/i, '').trim();
+
+  // 4. Capitalize first letter properly
+  if (name.length > 0) {
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
+  return name;
+}
+
+// Extractor resiliente multilínea y conversacional de cambios
 function extractChangesFromMessage(text: string): Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> {
   const changes: Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string } }> = [];
   const lines = text.split('\n');
@@ -314,50 +343,57 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
     const line = rawLine.trim();
     if (!line) continue;
 
-    // A. Extracción de precio: e.g., "• 💰 Croquetas de Jamón: 14.50 €" o "Croquetas a 14.50"
-    const priceMatch = line.match(/(?:•\s*💰\s*|Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
-    if (priceMatch) {
-      const dishName = priceMatch[1].replace(/^[•\s💰\-]+/, '').trim();
-      const priceVal = parseFloat(priceMatch[2].replace(',', '.'));
-      if (dishName && !isNaN(priceVal) && priceVal > 0) {
-        changes.push({
-          dishName,
-          updates: { price: priceVal }
-        });
-        continue;
+    // Split on connectors like " y ", " e ", ",", ";"
+    const clauses = line.split(/\s+(?:y|e|además|tambien|también|,|;)\s+/i);
+    for (const clause of clauses) {
+      // A. Extracción de precio
+      const priceMatch = clause.match(/(?:•\s*💰\s*|Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
+      if (priceMatch) {
+        const rawDish = priceMatch[1];
+        const cleaned = cleanDishName(rawDish);
+        const priceVal = parseFloat(priceMatch[2].replace(',', '.'));
+        if (cleaned && !isNaN(priceVal) && priceVal > 0) {
+          changes.push({
+            dishName: cleaned,
+            updates: { price: priceVal }
+          });
+          continue;
+        }
       }
-    }
 
-    // B. Extracción de plato agotado / disponible
-    const agotadoMatch = line.match(/(?:•\s*🚫\s*|Agotar:\s*|Marcar agotado:\s*)([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
-      line.match(/(?:agotar|agotado|sin stock|no queda|terminado)\s+(?:de\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
-    if (agotadoMatch) {
-      const dishName = agotadoMatch[1].replace(/^[•\s🚫\-]+/, '').trim();
-      if (dishName) {
-        changes.push({
-          dishName,
-          updates: { isAvailable: false }
-        });
-        continue;
+      // B. Extracción de plato agotado
+      const agotadoMatch = clause.match(/(?:marcar\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:agotad[oa]|sin\s+stock|no\s+queda|terminad[oa])/i) ||
+        clause.match(/(?:•\s*🚫\s*|agotar|agotad[oa]|sin\s+stock|no\s+queda|terminad[oa])\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+      if (agotadoMatch) {
+        const cleaned = cleanDishName(agotadoMatch[1]);
+        if (cleaned) {
+          changes.push({
+            dishName: cleaned,
+            updates: { isAvailable: false }
+          });
+          continue;
+        }
       }
-    }
 
-    const disponibleMatch = line.match(/(?:•\s*✅\s*|Disponible:\s*|Activar:\s*)([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
-      line.match(/(?:disponible|activar|reponer|hay stock)\s+(?:de\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
-    if (disponibleMatch) {
-      const dishName = disponibleMatch[1].replace(/^[•\s✅\-]+/, '').trim();
-      if (dishName) {
-        changes.push({
-          dishName,
-          updates: { isAvailable: true }
-        });
-        continue;
+      // C. Extracción de plato disponible
+      const disponibleMatch = clause.match(/(?:marcar\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|activad[oa]|repuest[oa])/i) ||
+        clause.match(/(?:•\s*✅\s*|disponible|activar|reponer|hay\s+stock|volver\s+a\s+tener)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i);
+      if (disponibleMatch) {
+        const cleaned = cleanDishName(disponibleMatch[1]);
+        if (cleaned) {
+          changes.push({
+            dishName: cleaned,
+            updates: { isAvailable: true }
+          });
+          continue;
+        }
       }
     }
   }
 
   return changes;
 }
+
 
 function renderPinesMenu(): string {
   let text = '🔐 *DIRECTORIO DE PINES Y TOKENS GASTROTORRE:*\n━━━━━━━━━━━━━━━━━━━━\n\n';
@@ -430,8 +466,10 @@ export async function POST(req: NextRequest) {
       if (data.startsWith('app_') || data.startsWith('approve_')) {
         const ticketId = data.replace('app_', '').replace('approve_', '');
 
+        // Responde de inmediato a Telegram para quitar el spinner del botón
+        await answerCallbackQuery(callback.id, '⏳ Publicando cambios en la carta...');
+
         if (messageText.includes('ESTE SITIO NO ESTÁ ALOJADO')) {
-          await answerCallbackQuery(callback.id, '⛔ Sitio no alojado en GastroTorre');
           await editMessageText(
             fromChatId,
             messageId,
@@ -459,8 +497,6 @@ export async function POST(req: NextRequest) {
           await sendMessage(hosteleroChatId, `✅ *¡Cambios publicados!*\n\nTu solicitud ha sido aprobada y los cambios ya están visibles en tu carta digital en vivo.\n\n🔗 https://gastrotorre.vercel.app`);
         }
 
-        await answerCallbackQuery(callback.id, `✅ ¡${updatedCount} cambios aplicados y publicados en vivo!`);
-
         const viewMenuMarkup = {
           inline_keyboard: [
             [
@@ -472,7 +508,7 @@ export async function POST(req: NextRequest) {
         await editMessageText(
           fromChatId,
           messageId,
-          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud`,
+          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud (${updatedCount} platos)`,
           viewMenuMarkup
         );
 
@@ -665,7 +701,24 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
 
       const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
       const ticketType = classifyTicketType(text);
-      const summary = `• ${ticketType.emoji} *Tipo:* ${ticketType.label}\n• 💬 *Petición:* "${text || '📸 Foto adjunta'}"`;
+      
+      const detected = extractChangesFromMessage(text);
+      let summary = `• ${ticketType.emoji} *Tipo:* ${ticketType.label}\n`;
+      if (detected.length > 0) {
+        for (const item of detected) {
+          if (item.updates.price !== undefined) {
+            summary += `• 💰 *${item.dishName}:* ${Number(item.updates.price).toFixed(2)} €\n`;
+          }
+          if (item.updates.isAvailable === false) {
+            summary += `• 🚫 *${item.dishName}:* Marcar Agotado\n`;
+          }
+          if (item.updates.isAvailable === true) {
+            summary += `• ✅ *${item.dishName}:* Marcar Disponible\n`;
+          }
+        }
+      } else {
+        summary += `• 💬 *Petición:* "${text || '📸 Foto adjunta'}"\n`;
+      }
 
       // Avisar al hostelero
       await sendMessage(
@@ -684,7 +737,7 @@ ${ticketType.emoji} *Categoría:* ${ticketType.label}
 _${text || '📸 [Foto enviada por hostelero]'}_
 
 🤖 *Cambios detectados:*
-${summary}
+${summary.trim()}
 ━━━━━━━━━━━━━━━━━━━━
 ☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;
 

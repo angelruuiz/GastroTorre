@@ -1353,11 +1353,11 @@ export default function AdminPage() {
                 </div>
 
                 <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block font-medium">Impacto Económico</span>
+                  <span className="text-[11px] text-slate-400 block font-medium">Interacciones Directas</span>
                   <span className="text-2xl font-black text-emerald-300 block mt-0.5">
-                    ~{(restaurants.length * 3240).toLocaleString()} €
+                    {restaurants.reduce((acc, r) => acc + (r.stats?.phoneCalls || 85) + (r.stats?.whatsappClicks || 140) + (r.stats?.directionsClicks || 90), 0).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">Facturación generada</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Teléfono, WhatsApp y GPS</span>
                 </div>
 
                 <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
@@ -2049,27 +2049,6 @@ export default function AdminPage() {
               </div>
               <p className="text-xs text-slate-500">
                 1 de cada 3.5 comensales llama, pide por WhatsApp o busca la ruta GPS.
-              </p>
-            </div>
-
-            {/* KPI 4: Facturación Estimada */}
-            <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-5 rounded-2xl border border-amber-300/80 shadow-sm space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Facturación Estimada en Sala</span>
-                <div className="w-6 h-6 rounded-lg bg-amber-200/60 text-amber-800 flex items-center justify-center">
-                  <Award className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-black text-amber-900 tracking-tight">
-                  ~{stats.estimatedRevenueEuros.toLocaleString()} €
-                </span>
-                <span className="text-xs font-black text-slate-900 bg-amber-400 px-2 py-0.5 rounded-full">
-                  ROI 55x
-                </span>
-              </div>
-              <p className="text-xs text-amber-800/90">
-                Volumen estimado en comandas generadas a través de la carta digital.
               </p>
             </div>
           </div>

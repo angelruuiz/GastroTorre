@@ -156,7 +156,11 @@ function extractRestaurantFromMessage(text: string): { slug: string; uuid: strin
 }
 
 // Actualizar en Supabase PostgreSQL en tiempo real (Cloud Serverless)
-async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch: string, updates: { price?: number; isAvailable?: boolean; photo_url?: string }) {
+async function applyDishChangeToSupabase(
+  restaurantUuid: string,
+  dishNameSearch: string,
+  updates: { price?: number; isAvailable?: boolean; photo_url?: string }
+): Promise<{ success: boolean; dishId?: string; dishName?: string; previousPrice?: number; newPrice?: number; isNew?: boolean }> {
   try {
     const payload: any = {};
     if (updates.price !== undefined) payload.price = Number(updates.price);
@@ -168,7 +172,8 @@ async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch:
       'tosta', 'tostas', 'pizza', 'pizzas', 'burger', 'burgers', 'ensalada', 'ensaladas',
       'tarta', 'tartas', 'arroz', 'arroces', 'plato', 'platos', 'racion', 'raciones',
       'de', 'del', 'la', 'el', 'las', 'los', 'con', 'y', 'en', 'sobre', 'al', 'a', 'para',
-      'nuestro', 'nuestros', 'nuestra', 'nuestras', 'casa', 'especial'
+      'nuestro', 'nuestros', 'nuestra', 'nuestras', 'casa', 'especial',
+      'poner', 'pon', 'sube', 'subir', 'bajar', 'cambiar', 'cambia', 'hola', 'favor', 'porfa', 'nuevo', 'precio'
     ]);
 
     const words = dishNameSearch
@@ -194,31 +199,50 @@ async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch:
       searchQueries.push(`*${encodeURIComponent(firstWord)}*`);
     }
 
-    let matched = false;
     for (const q of searchQueries) {
-      const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.${q}`;
-      const res = await fetch(queryUrl, {
-        method: 'PATCH',
+      // First fetch existing to capture previousPrice
+      const getUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.${q}&select=id,name,price&limit=1`;
+      const getRes = await fetch(getUrl, {
         headers: {
           'apikey': SUPABASE_SECRET_KEY,
           'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
         },
-        body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          console.log(`✅ [Supabase Cloud] Actualizadas ${data.length} filas con query "${q}":`, data.map((d: any) => d.name));
-          matched = true;
-          break;
+      if (getRes.ok) {
+        const found = await getRes.json();
+        if (found && found.length > 0) {
+          const existing = found[0];
+          const previousPrice = Number(existing.price);
+
+          const patchUrl = `${SUPABASE_URL}/rest/v1/dishes?id=eq.${existing.id}`;
+          const patchRes = await fetch(patchUrl, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_SECRET_KEY,
+              'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (patchRes.ok) {
+            console.log(`✅ [Supabase Cloud] Actualizado plato "${existing.name}" (precio anterior: ${previousPrice}€, nuevo: ${updates.price}€)`);
+            return {
+              success: true,
+              dishId: existing.id,
+              dishName: existing.name,
+              previousPrice,
+              newPrice: updates.price !== undefined ? Number(updates.price) : undefined,
+              isNew: false,
+            };
+          }
         }
       }
     }
 
-    if (!matched && updates.price !== undefined) {
+    if (updates.price !== undefined) {
       try {
         // Fetch first category for this restaurant to assign the new dish
         const catUrl = `${SUPABASE_URL}/rest/v1/menu_categories?restaurant_id=eq.${restaurantUuid}&order=order_index.asc&limit=1`;
@@ -236,9 +260,10 @@ async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch:
           }
         }
 
+        const cleanName = cleanDishName(dishNameSearch);
         const insertPayload: any = {
           restaurant_id: restaurantUuid,
-          name: dishNameSearch,
+          name: cleanName || dishNameSearch,
           price: Number(updates.price),
           is_available: updates.isAvailable !== false,
           is_featured: false,
@@ -262,18 +287,25 @@ async function applyDishChangeToSupabase(restaurantUuid: string, dishNameSearch:
 
         if (insertRes.ok) {
           const inserted = await insertRes.json();
-          console.log(`✨ [Supabase Cloud] Creado nuevo plato automagicamente:`, inserted);
-          return true;
+          const newDish = inserted?.[0];
+          console.log(`✨ [Supabase Cloud] Creado nuevo plato automagicamente:`, newDish);
+          return {
+            success: true,
+            dishId: newDish?.id,
+            dishName: newDish?.name,
+            newPrice: Number(updates.price),
+            isNew: true,
+          };
         }
       } catch (insertErr: any) {
         console.warn('Error auto-creating new dish:', insertErr);
       }
     }
 
-    return matched;
+    return { success: false };
   } catch (err: any) {
     console.error('[Supabase Cloud Exception]:', err?.message);
-    return false;
+    return { success: false };
   }
 }
 
@@ -484,17 +516,97 @@ export async function POST(req: NextRequest) {
 
         const restaurantInfo = extractRestaurantFromMessage(messageText);
         const restaurantUuid = restaurantInfo?.uuid || 'a1000000-0000-0000-0000-000000000001';
-
-        let updatedCount = 0;
-        for (const item of extracted) {
-          const success = await applyDishChangeToSupabase(restaurantUuid, item.dishName, item.updates);
-          if (success) updatedCount++;
-        }
+        const isTemporal = /fin\s+de\s+semana|este\s+finde|finde|solo\s+este\s+fin|temporal|hasta\s+el\s+lunes/i.test(messageText);
 
         const chatIdMatch = messageText.match(/ID:\s*`(\d+)`/);
         const hosteleroChatId = chatIdMatch?.[1];
+
+        let updatedCount = 0;
+        for (const item of extracted) {
+          const res = await applyDishChangeToSupabase(restaurantUuid, item.dishName, item.updates);
+          if (res.success) {
+            updatedCount++;
+
+            // Si es cambio temporal de precio para el fin de semana, registrar evento para preguntar el lunes
+            if (isTemporal && hosteleroChatId && res.dishId && res.previousPrice !== undefined && res.newPrice !== undefined && res.previousPrice !== res.newPrice) {
+              try {
+                await fetch(`${SUPABASE_URL}/rest/v1/analytics_events`, {
+                  method: 'POST',
+                  headers: {
+                    'apikey': SUPABASE_SECRET_KEY,
+                    'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    restaurant_id: restaurantUuid,
+                    event_type: 'temporal_price_pending',
+                    user_agent: `temp:${hosteleroChatId}:${res.dishId}:${encodeURIComponent(res.dishName || item.dishName)}:${res.previousPrice}:${res.newPrice}:${new Date().toISOString()}`,
+                  }),
+                });
+                console.log(`🕒 [Temporal Pricing] Registrado cambio pendiente de reversión para lunes: ${res.dishName} (${res.previousPrice}€ -> ${res.newPrice}€)`);
+              } catch (tempErr) {
+                console.warn('Error recording temporal price change:', tempErr);
+              }
+            }
+          }
+        }
+
         if (hosteleroChatId) {
-          await sendMessage(hosteleroChatId, `✅ *¡Cambios publicados!*\n\nTu solicitud ha sido aprobada y los cambios ya están visibles en tu carta digital en vivo.\n\n🔗 https://gastrotorre.vercel.app`);
+          const temporalNotice = isTemporal 
+            ? `\n\n🕒 _Nota: Hemos anotado que este cambio es para el fin de semana. El lunes te preguntaremos con 1 clic si deseas restaurar el precio anterior o mantenerlo._`
+            : '';
+          await sendMessage(
+            hosteleroChatId,
+            `✅ *¡Cambios publicados!*\n\nTu solicitud ha sido aprobada y los cambios ya están visibles en tu carta digital en vivo.${temporalNotice}\n\n🔗 https://gastrotorre.vercel.app`
+          );
+        }
+
+        const viewMenuMarkup = {
+          inline_keyboard: [
+            [
+              { text: '👀 Ver Carta en Vivo', url: 'https://gastrotorre.vercel.app' }
+            ]
+          ]
+        };
+
+        const temporalTag = isTemporal ? ' • 🕒 Pregunta de Reversión Programada (Lunes)' : '';
+        await editMessageText(
+          fromChatId,
+          messageId,
+          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud (${updatedCount} platos)${temporalTag}`,
+          viewMenuMarkup
+        );
+
+        return NextResponse.json({ ok: true, status: 'approved', changes: updatedCount });
+      }
+
+      // --- RESTAURAR PRECIO TRAS FIN DE SEMANA (BOTÓN HOSTELERO) ---
+      if (data.startsWith('rev_')) {
+        const parts = data.split('_');
+        const dishId = parts[1];
+        const targetPrice = parseFloat(parts[2]);
+
+        await answerCallbackQuery(callback.id, '⏳ Restaurando precio en tu carta...');
+
+        // Actualizar precio en Supabase
+        const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?id=eq.${dishId}`;
+        const res = await fetch(queryUrl, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_SECRET_KEY,
+            'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({ price: targetPrice, updated_at: new Date().toISOString() }),
+        });
+
+        let dishName = 'Plato';
+        if (res.ok) {
+          const updated = await res.json();
+          if (updated && updated.length > 0) {
+            dishName = updated[0].name;
+          }
         }
 
         const viewMenuMarkup = {
@@ -508,11 +620,38 @@ export async function POST(req: NextRequest) {
         await editMessageText(
           fromChatId,
           messageId,
-          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud (${updatedCount} platos)`,
+          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n🔄 *PRECIO RESTAURADO A ${targetPrice.toFixed(2)} €*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • Publicado en vivo en tu carta digital.`,
           viewMenuMarkup
         );
 
-        return NextResponse.json({ ok: true, status: 'approved', changes: updatedCount });
+        await sendMessage(ADMIN_CHAT_ID, `ℹ️ *Reversión de Fin de Semana:* El hostelero ha restaurado *${dishName}* a ${targetPrice.toFixed(2)} € en su carta.`);
+        return NextResponse.json({ ok: true, status: 'reverted' });
+      }
+
+      // --- MANTENER PRECIO TRAS FIN DE SEMANA (BOTÓN HOSTELERO) ---
+      if (data.startsWith('keep_')) {
+        const parts = data.split('_');
+        const dishId = parts[1];
+        const currentPrice = parseFloat(parts[2]);
+
+        await answerCallbackQuery(callback.id, '✨ Precio confirmado como permanente');
+
+        const viewMenuMarkup = {
+          inline_keyboard: [
+            [
+              { text: '👀 Ver Carta en Vivo', url: 'https://gastrotorre.vercel.app' }
+            ]
+          ]
+        };
+
+        await editMessageText(
+          fromChatId,
+          messageId,
+          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✨ *PRECIO CONFIRMADO A ${currentPrice.toFixed(2)} € (PERMANENTE)*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • Se mantiene como precio oficial en tu carta.`,
+          viewMenuMarkup
+        );
+
+        return NextResponse.json({ ok: true, status: 'kept' });
       }
 
       // --- RECHAZAR TICKET ---

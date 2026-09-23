@@ -392,10 +392,11 @@ export const DIET_FILTERS = [
   {
     id: 'gluten-free',
     name: 'Apto Celíacos (Sin Gluten)',
-    shortName: 'Apto Celíacos',
+    shortName: 'Sin Gluten',
     badgeText: 'Sin Gluten',
     emoji: '🌾',
     iconType: 'check',
+    allergenId: 'gluten',
     check: (dish: any) => {
       if (dish.isGlutenFree) return true;
       const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
@@ -409,9 +410,166 @@ export const DIET_FILTERS = [
     badgeText: 'Sin Lactosa',
     emoji: '🥛',
     iconType: 'no',
+    allergenId: 'lactosa',
     check: (dish: any) => {
       const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
       return !ids.includes('lactosa');
+    },
+  },
+  {
+    id: 'egg-free',
+    name: 'Sin Huevo',
+    shortName: 'Sin Huevo',
+    badgeText: 'Sin Huevo',
+    emoji: '🥚',
+    iconType: 'no',
+    allergenId: 'huevo',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('huevo');
+    },
+  },
+  {
+    id: 'nut-free',
+    name: 'Sin Frutos Secos',
+    shortName: 'Sin Frutos Secos',
+    badgeText: 'Sin Frutos Secos',
+    emoji: '🌰',
+    iconType: 'no',
+    allergenId: 'frutos-secos',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('frutos-secos') && !ids.includes('cacahuetes');
+    },
+  },
+  {
+    id: 'fish-free',
+    name: 'Sin Pescado',
+    shortName: 'Sin Pescado',
+    badgeText: 'Sin Pescado',
+    emoji: '🐟',
+    iconType: 'no',
+    allergenId: 'pescado',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('pescado');
+    },
+  },
+  {
+    id: 'crustaceans-free',
+    name: 'Sin Crustáceos / Marisco',
+    shortName: 'Sin Crustáceos',
+    badgeText: 'Sin Crustáceos',
+    emoji: '🦐',
+    iconType: 'no',
+    allergenId: 'crustaceos',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('crustaceos');
+    },
+  },
+  {
+    id: 'molluscs-free',
+    name: 'Sin Moluscos',
+    shortName: 'Sin Moluscos',
+    badgeText: 'Sin Moluscos',
+    emoji: '🦪',
+    iconType: 'no',
+    allergenId: 'moluscos',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('moluscos');
+    },
+  },
+  {
+    id: 'soy-free',
+    name: 'Sin Soja',
+    shortName: 'Sin Soja',
+    badgeText: 'Sin Soja',
+    emoji: '🌱',
+    iconType: 'no',
+    allergenId: 'soja',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('soja');
+    },
+  },
+  {
+    id: 'mustard-free',
+    name: 'Sin Mostaza',
+    shortName: 'Sin Mostaza',
+    badgeText: 'Sin Mostaza',
+    emoji: '🟡',
+    iconType: 'no',
+    allergenId: 'mostaza',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('mostaza');
+    },
+  },
+  {
+    id: 'sesame-free',
+    name: 'Sin Sésamo',
+    shortName: 'Sin Sésamo',
+    badgeText: 'Sin Sésamo',
+    emoji: '🥯',
+    iconType: 'no',
+    allergenId: 'sesamo',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('sesamo');
+    },
+  },
+  {
+    id: 'celery-free',
+    name: 'Sin Apio',
+    shortName: 'Sin Apio',
+    badgeText: 'Sin Apio',
+    emoji: '🥬',
+    iconType: 'no',
+    allergenId: 'apio',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('apio');
+    },
+  },
+  {
+    id: 'sulfites-free',
+    name: 'Sin Sulfitos',
+    shortName: 'Sin Sulfitos',
+    badgeText: 'Sin Sulfitos',
+    emoji: '🍷',
+    iconType: 'no',
+    allergenId: 'sulfitos',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('sulfitos');
+    },
+  },
+  {
+    id: 'lupin-free',
+    name: 'Sin Altramuces',
+    shortName: 'Sin Altramuces',
+    badgeText: 'Sin Altramuces',
+    emoji: '🫘',
+    iconType: 'no',
+    allergenId: 'altramuces',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('altramuces');
+    },
+  },
+  {
+    id: 'peanut-free',
+    name: 'Sin Cacahuetes',
+    shortName: 'Sin Cacahuetes',
+    badgeText: 'Sin Cacahuetes',
+    emoji: '🥜',
+    iconType: 'no',
+    allergenId: 'cacahuetes',
+    check: (dish: any) => {
+      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
+      return !ids.includes('cacahuetes');
     },
   },
   {
@@ -431,30 +589,6 @@ export const DIET_FILTERS = [
     emoji: '🥗',
     iconType: 'veg',
     check: (dish: any) => Boolean(dish.isVegetarian || dish.isVegan),
-  },
-  {
-    id: 'nut-free',
-    name: 'Sin Frutos Secos ni Cacahuete',
-    shortName: 'Sin Frutos Secos',
-    badgeText: 'Sin Frutos Secos',
-    emoji: '🌰',
-    iconType: 'no',
-    check: (dish: any) => {
-      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
-      return !ids.includes('frutos-secos') && !ids.includes('cacahuetes');
-    },
-  },
-  {
-    id: 'seafood-free',
-    name: 'Sin Pescado ni Marisco',
-    shortName: 'Sin Pescado/Marisco',
-    badgeText: 'Sin Pescado/Marisco',
-    emoji: '🐟',
-    iconType: 'no',
-    check: (dish: any) => {
-      const ids = (dish.allergens || []).map((a: string) => getAllergenId(a));
-      return !ids.includes('pescado') && !ids.includes('crustaceos') && !ids.includes('moluscos');
-    },
   },
 ];
 

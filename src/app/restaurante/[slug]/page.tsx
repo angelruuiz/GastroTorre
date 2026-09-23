@@ -791,18 +791,36 @@ export default function RestaurantDetailPage() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {OFFICIAL_ALLERGENS.map((alg) => (
-                <div
-                  key={alg.id}
-                  className={`p-2.5 rounded-2xl border ${alg.bg} ${alg.border} flex items-start gap-2.5 transition-all`}
-                >
-                  <span className="text-xl shrink-0 select-none">{alg.emoji}</span>
-                  <div>
-                    <h5 className={`text-xs font-black ${alg.color}`}>{alg.name}</h5>
-                    <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight mt-0.5">{alg.description}</p>
-                  </div>
-                </div>
-              ))}
+              {OFFICIAL_ALLERGENS.map((alg) => {
+                const matchingDiet = DIET_FILTERS.find((f) => (f as any).allergenId === alg.id);
+                return (
+                  <button
+                    key={alg.id}
+                    type="button"
+                    onClick={() => {
+                      if (matchingDiet) {
+                        setSelectedDietFilter(matchingDiet.id);
+                        setShowAllergensGuide(false);
+                      }
+                    }}
+                    className={`p-2.5 rounded-2xl border ${alg.bg} ${alg.border} flex items-start gap-2.5 transition-all text-left hover:scale-[1.02] active:scale-95 group cursor-pointer`}
+                    title={`Filtrar platos sin ${alg.shortName}`}
+                  >
+                    <span className="text-xl shrink-0 select-none">{alg.emoji}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <h5 className={`text-xs font-black ${alg.color}`}>{alg.name}</h5>
+                        {matchingDiet && (
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-white/70 dark:bg-black/40 px-1.5 py-0.5 rounded-md shrink-0">
+                            Filtrar ➔
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight mt-0.5">{alg.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 space-y-1">

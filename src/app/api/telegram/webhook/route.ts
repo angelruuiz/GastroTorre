@@ -796,6 +796,34 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
         }
       }
 
+      // Comprobación dinámica en Supabase para restaurantes nuevos creados desde /admin
+      try {
+        const pinParts = text.toUpperCase().trim().replace(/^PIN\s*[:=]?\s*/i, '').split(/[-_ ]+/);
+        const keyword = pinParts[0]?.toLowerCase().replace(/[^a-z0-9áéíóúñ]/g, '') || '';
+        if (keyword.length >= 3 && !['HOLA', 'QUIERO', 'PORFA', 'BUENAS', 'CAMBIAR', 'SUBIR'].includes(keyword.toUpperCase())) {
+          const dynRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?or=(slug.ilike.*${encodeURIComponent(keyword)}*,name.ilike.*${encodeURIComponent(keyword)}*)&select=id,slug,name&limit=1`, {
+            headers: {
+              'apikey': SUPABASE_SECRET_KEY,
+              'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+            },
+          });
+          if (dynRes.ok) {
+            const dynList = await dynRes.json();
+            if (dynList && dynList.length > 0) {
+              const found = dynList[0];
+              await savePersistentBinding(chatId, found.slug, found.name, senderName);
+              await sendMessage(
+                chatId,
+                `🔑 *¡PIN Reconocido Correctamente!*\n\nTu Telegram ha quedado vinculado a *${found.name}*.\n\nYa puedes enviarme cambios de precios (ej: _"Sube las bravas a 8.50€"_), platos agotados o fotos en cualquier momento.`
+              );
+              return NextResponse.json({ ok: true });
+            }
+          }
+        }
+      } catch (dynErr) {
+        console.warn('Error dynamic pin check:', dynErr);
+      }
+
       // Rechazar Notas de Voz de forma proactiva para evitar errores por ruido ambiental
       if (msg.voice || msg.audio) {
         await sendMessage(

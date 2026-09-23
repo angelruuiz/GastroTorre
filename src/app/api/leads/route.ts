@@ -57,7 +57,13 @@ async function notifyTelegramAdmin(lead: {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido o cuerpo no reconocible' }, { status: 400 });
+    }
+
     const restaurant_name = body.restaurant_name || body.restaurantName || body.name;
     const contact_name = body.contact_name || body.contactName || body.owner || body.contact;
     const phone = body.phone;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../lib/supabase/client';
+import { supabaseAdmin } from '../../../lib/supabase/admin';
 
 const RESTAURANT_UUID_MAP: Record<string, string> = {
   'asador-los-jarales': 'a1000000-0000-0000-0000-000000000001',
@@ -18,7 +18,13 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido o cuerpo no reconocible' }, { status: 400 });
+    }
+
     const { restaurant_id, event_type, dish_id } = body;
 
     if (!restaurant_id || !event_type) {
@@ -31,8 +37,8 @@ export async function POST(request: Request) {
     const resolvedRestaurantId = RESTAURANT_UUID_MAP[restaurant_id] || restaurant_id;
     const validDishId = dish_id && UUID_REGEX.test(dish_id) ? dish_id : null;
 
-    if (isSupabaseConfigured() && supabase) {
-      const { error } = await supabase.from('analytics_events').insert({
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('analytics_events').insert({
         restaurant_id: resolvedRestaurantId,
         event_type,
         dish_id: validDishId,

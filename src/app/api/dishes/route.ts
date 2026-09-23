@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase/client';
+import { supabaseAdmin } from '../../../lib/supabase/admin';
 import { initialRestaurants } from '../../../data/restaurants';
 
 export async function GET(request: Request) {
@@ -46,7 +47,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido o cuerpo vacío' }, { status: 400 });
+    }
+
     const { restaurant_id, category_id, name, description, price, allergens, photo_url, is_featured } = body;
 
     if (!name || price === undefined) {
@@ -64,15 +71,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (isSupabaseConfigured() && supabase) {
-      const { data, error } = await supabase
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
         .from('dishes')
         .insert({
-          restaurant_id,
-          category_id,
+          restaurant_id: restaurant_id || 'a1000000-0000-0000-0000-000000000001',
+          category_id: category_id || null,
           name,
           description: description || '',
-          price: Number(price),
+          price: numericPrice,
           allergens: allergens || [],
           photo_url: photo_url || '',
           is_available: true,
@@ -92,7 +99,7 @@ export async function POST(request: Request) {
       id: `dish-${Date.now()}`,
       name,
       description,
-      price: Number(price),
+      price: numericPrice,
       allergens: allergens || [],
       image: photo_url,
       isAvailable: true,
@@ -111,7 +118,13 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido o cuerpo vacío' }, { status: 400 });
+    }
+
     const { id, is_available, price, name, allergens, photo_url } = body;
 
     if (!id) {
@@ -128,7 +141,7 @@ export async function PATCH(request: Request) {
       }
     }
 
-    if (isSupabaseConfigured() && supabase) {
+    if (supabaseAdmin) {
       const updatePayload: any = { updated_at: new Date().toISOString() };
       if (is_available !== undefined) updatePayload.is_available = is_available;
       if (price !== undefined) updatePayload.price = Number(price);
@@ -136,7 +149,7 @@ export async function PATCH(request: Request) {
       if (allergens !== undefined) updatePayload.allergens = allergens;
       if (photo_url !== undefined) updatePayload.photo_url = photo_url;
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('dishes')
         .update(updatePayload)
         .eq('id', id)
@@ -170,8 +183,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'ID requerido' }, { status: 400 });
     }
 
-    if (isSupabaseConfigured() && supabase) {
-      const { error } = await supabase.from('dishes').delete().eq('id', id);
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('dishes').delete().eq('id', id);
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }

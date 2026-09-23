@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { initialRestaurants } from '../../../data/restaurants';
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase/client';
+import { supabaseAdmin } from '../../../lib/supabase/admin';
 
 export async function GET() {
   if (isSupabaseConfigured() && supabase) {
@@ -27,7 +28,13 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'JSON inválido o cuerpo no reconocible' }, { status: 400 });
+    }
+
     const { id, name, tagline, description, address, phone, whatsapp, zone } = body;
 
     if (!id || !name) {
@@ -37,8 +44,8 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (isSupabaseConfigured() && supabase) {
-      const { data, error } = await supabase
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
         .from('restaurants')
         .update({
           name,

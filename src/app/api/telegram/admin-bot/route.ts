@@ -48,7 +48,11 @@ async function apiCall(method: string, body: Record<string, any> = {}) {
 }
 
 async function sendMessage(chatId: string | number, text: string) {
-  return apiCall('sendMessage', { chat_id: chatId, text, parse_mode: 'Markdown' });
+  const res = await apiCall('sendMessage', { chat_id: chatId, text, parse_mode: 'Markdown' });
+  if (!res.ok && (res.description?.includes("can't parse entities") || res.error?.includes("entities"))) {
+    return apiCall('sendMessage', { chat_id: chatId, text: text.replace(/[*_`]/g, '') });
+  }
+  return res;
 }
 
 async function sendTypingAction(chatId: string | number) {

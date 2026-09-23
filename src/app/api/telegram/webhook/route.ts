@@ -121,12 +121,20 @@ async function apiCall(method: string, body: Record<string, any> = {}) {
 }
 
 async function sendMessage(chatId: string | number, text: string, replyMarkup: any = null) {
-  return apiCall('sendMessage', {
+  const res = await apiCall('sendMessage', {
     chat_id: chatId,
     text,
     parse_mode: 'Markdown',
     reply_markup: replyMarkup || undefined,
   });
+  if (!res.ok && (res.description?.includes("can't parse entities") || res.error?.includes("entities"))) {
+    return apiCall('sendMessage', {
+      chat_id: chatId,
+      text: text.replace(/[*_`]/g, ''),
+      reply_markup: replyMarkup || undefined,
+    });
+  }
+  return res;
 }
 
 async function answerCallbackQuery(callbackQueryId: string, text = '') {
@@ -137,13 +145,22 @@ async function answerCallbackQuery(callbackQueryId: string, text = '') {
 }
 
 async function editMessageText(chatId: string | number, messageId: number, text: string, replyMarkup: any = null) {
-  return apiCall('editMessageText', {
+  const res = await apiCall('editMessageText', {
     chat_id: chatId,
     message_id: messageId,
     text,
     parse_mode: 'Markdown',
     reply_markup: replyMarkup || undefined,
   });
+  if (!res.ok && (res.description?.includes("can't parse entities") || res.error?.includes("entities"))) {
+    return apiCall('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text: text.replace(/[*_`]/g, ''),
+      reply_markup: replyMarkup || undefined,
+    });
+  }
+  return res;
 }
 
 function extractRestaurantFromMessage(text: string): { slug: string; uuid: string; name: string } | null {

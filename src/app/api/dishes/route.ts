@@ -56,6 +56,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const numericPrice = Number(price);
+    if (isNaN(numericPrice) || numericPrice < 0) {
+      return NextResponse.json(
+        { success: false, error: 'El precio debe ser un número válido mayor o igual a 0' },
+        { status: 400 }
+      );
+    }
+
     if (isSupabaseConfigured() && supabase) {
       const { data, error } = await supabase
         .from('dishes')
@@ -108,6 +116,16 @@ export async function PATCH(request: Request) {
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'ID de plato requerido' }, { status: 400 });
+    }
+
+    if (price !== undefined) {
+      const numericPrice = Number(price);
+      if (isNaN(numericPrice) || numericPrice < 0) {
+        return NextResponse.json(
+          { success: false, error: 'El precio debe ser un número válido mayor o igual a 0' },
+          { status: 400 }
+        );
+      }
     }
 
     if (isSupabaseConfigured() && supabase) {

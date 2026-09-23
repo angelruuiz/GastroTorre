@@ -103,7 +103,7 @@ export default function RestaurantDetailPage() {
   };
 
   // Count total and matching dishes
-  const allDishes = restaurant.menu.flatMap((cat) => cat.dishes);
+  const allDishes = (restaurant.menu || []).flatMap((cat) => cat.dishes || []);
   const currentFilterObj = DIET_FILTERS.find((f) => f.id === selectedDietFilter);
   const matchingDishesCount = currentFilterObj
     ? allDishes.filter(currentFilterObj.check).length
@@ -113,15 +113,15 @@ export default function RestaurantDetailPage() {
   const schemaRestaurant = {
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
-    name: restaurant.name,
-    description: restaurant.description,
-    image: restaurant.coverImage,
-    servesCuisine: restaurant.cuisine,
-    priceRange: restaurant.priceLevel,
-    telephone: restaurant.phone,
+    name: restaurant.name || 'Restaurante en Torrelodones',
+    description: restaurant.description || '',
+    image: restaurant.coverImage || '',
+    servesCuisine: restaurant.cuisine || 'Gastronomía',
+    priceRange: restaurant.priceLevel || '€€',
+    telephone: restaurant.phone || '',
     address: {
       '@type': 'PostalAddress',
-      streetAddress: restaurant.address,
+      streetAddress: restaurant.address || 'Torrelodones, Madrid',
       addressLocality: 'Torrelodones',
       addressRegion: 'Madrid',
       postalCode: '28250',
@@ -130,16 +130,16 @@ export default function RestaurantDetailPage() {
     hasMenu: {
       '@type': 'Menu',
       name: `Carta de ${restaurant.name}`,
-      hasMenuSection: restaurant.menu.map((cat) => ({
+      hasMenuSection: (restaurant.menu || []).map((cat) => ({
         '@type': 'MenuSection',
-        name: cat.name,
-        hasMenuItem: cat.dishes.map((d) => ({
+        name: cat.name || 'Categoría',
+        hasMenuItem: (cat.dishes || []).map((d) => ({
           '@type': 'MenuItem',
-          name: d.name,
-          description: d.description,
+          name: d.name || 'Plato',
+          description: d.description || '',
           offers: {
             '@type': 'Offer',
-            price: d.price.toFixed(2),
+            price: typeof d.price === 'number' ? d.price.toFixed(2) : String(d.price || '0.00'),
             priceCurrency: 'EUR',
           },
         })),

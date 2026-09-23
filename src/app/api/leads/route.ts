@@ -13,16 +13,23 @@ async function notifyTelegramAdmin(lead: {
   zone?: string;
 }) {
   try {
+    const cleanRestaurant = String(lead.restaurant_name || '').replace(/[*_`\[\]()]/g, '');
+    const cleanContact = String(lead.contact_name || '').replace(/[*_`\[\]()]/g, '');
+    const cleanPhone = String(lead.phone || '').replace(/[^0-9+ ]/g, '');
+    const cleanZone = String(lead.zone || 'Torrelodones').replace(/[*_`\[\]()]/g, '');
+    const cleanPlan = String(lead.plan_interest || 'Plan Pro').replace(/[*_`\[\]()]/g, '');
+    const cleanEmail = String(lead.email || '').replace(/[*_`\[\]()]/g, '');
+
     const text = `🔔 *¡NUEVO HOSTELERO SOLICITA INFORMACIÓN EN GASTROTORRE!*\n\n` +
-      `🍽️ *Restaurante:* ${lead.restaurant_name}\n` +
-      `👤 *Contacto:* ${lead.contact_name}\n` +
-      `📞 *Teléfono:* [${lead.phone}](tel:${lead.phone.replace(/[^0-9+]/g, '')})\n` +
-      `📍 *Zona:* ${lead.zone || 'Torrelodones'}\n` +
-      `💼 *Plan:* ${lead.plan_interest || 'Plan Pro'}\n` +
-      (lead.email ? `✉️ *Email:* ${lead.email}\n` : '') +
+      `🍽️ *Restaurante:* ${cleanRestaurant}\n` +
+      `👤 *Contacto:* ${cleanContact}\n` +
+      `📞 *Teléfono:* [${cleanPhone}](tel:${cleanPhone.replace(/[^0-9+]/g, '')})\n` +
+      `📍 *Zona:* ${cleanZone}\n` +
+      `💼 *Plan:* ${cleanPlan}\n` +
+      (cleanEmail ? `✉️ *Email:* ${cleanEmail}\n` : '') +
       `\n⏰ _Recibido en tiempo real desde la web GastroTorre_`;
 
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -31,6 +38,18 @@ async function notifyTelegramAdmin(lead: {
         parse_mode: 'Markdown',
       }),
     });
+
+    if (!res.ok) {
+      // Fallback without parse_mode if telegram rejected entities
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_ADMIN_CHAT_ID,
+          text: text.replace(/[*_`\[\]()]/g, ''),
+        }),
+      });
+    }
   } catch (err) {
     console.warn('Error sending lead Telegram notification:', err);
   }

@@ -88,10 +88,10 @@ export default function HomePage() {
           normalizeText(r.cuisine).includes(normalizedQuery) ||
           normalizeText(r.tagline).includes(normalizedQuery) ||
           normalizeText(r.zone).includes(normalizedQuery) ||
-          r.features.some((f) => normalizeText(f).includes(normalizedQuery)) ||
-          r.menu.some((cat) =>
+          (r.features || []).some((f) => normalizeText(f).includes(normalizedQuery)) ||
+          (r.menu || []).some((cat) =>
             normalizeText(cat.name).includes(normalizedQuery) ||
-            cat.dishes.some((d) =>
+            (cat.dishes || []).some((d) =>
               normalizeText(d.name).includes(normalizedQuery) ||
               normalizeText(d.description).includes(normalizedQuery)
             )
@@ -103,11 +103,11 @@ export default function HomePage() {
       // Category filter
       if (selectedFilter === 'todos') return true;
       if (selectedFilter === 'terraza') {
-        return r.features.some((f) => normalizeText(f).includes('terraza'));
+        return (r.features || []).some((f) => normalizeText(f).includes('terraza'));
       }
       if (selectedFilter === 'celiacos') {
-        return r.features.some((f) => normalizeText(f).includes('celiac') || normalizeText(f).includes('sin gluten')) ||
-          r.menu.some(cat => cat.dishes.some(d => d.isGlutenFree));
+        return (r.features || []).some((f) => normalizeText(f).includes('celiac') || normalizeText(f).includes('sin gluten')) ||
+          (r.menu || []).some(cat => (cat.dishes || []).some(d => d.isGlutenFree));
       }
       return r.category === selectedFilter;
     });

@@ -205,7 +205,7 @@ async function sendCategorySelectionPrompt(chatId: string, restaurantSlug: strin
       textPrompt += `\n${index + 1}️⃣ *${cat.name}*`;
       currentRow.push({
         text: `${index + 1}. ${cat.name}`,
-        callback_data: `selcat_${cat.id.slice(0, 16)}`,
+        callback_data: `selcat_${index}`,
       });
       if (currentRow.length === 2) {
         keyboardRows.push(currentRow);
@@ -887,8 +887,9 @@ export async function POST(req: NextRequest) {
 
       // --- SELECCIÓN DE SECCIÓN / CATEGORÍA POR HOSTELERO ---
       if (data.startsWith('selcat_')) {
-        const shortCatId = data.replace('selcat_', '');
+        const catIdxStr = data.replace('selcat_', '');
         const fromChatId = String(callback.message?.chat?.id || ADMIN_CHAT_ID);
+        const messageId = callback.message?.message_id;
 
         await answerCallbackQuery(callback.id, '✅ Sección seleccionada');
 
@@ -896,16 +897,27 @@ export async function POST(req: NextRequest) {
         if (pending) {
           const restaurantUuid = RESTAURANT_CONFIG[pending.restaurantSlug]?.uuid || 'a1000000-0000-0000-0000-000000000001';
           const categories = await getRestaurantCategories(restaurantUuid);
-          const matched = categories.find(c => c.id.startsWith(shortCatId) || c.id === shortCatId);
-          const catId = matched?.id || shortCatId;
-          const catName = matched?.name || 'Sección General';
+          
+          let selectedCat: { id: string; name: string } | null = null;
+          const idx = parseInt(catIdxStr, 10);
+          if (!isNaN(idx) && idx >= 0 && idx < categories.length) {
+            selectedCat = categories[idx];
+          } else {
+            selectedCat = categories.find(c => c.id === catIdxStr || c.id.startsWith(catIdxStr)) || null;
+          }
+
+          const catId = selectedCat?.id || (categories.length > 0 ? categories[0].id : '');
+          const catName = selectedCat?.name || 'Sección General';
 
           await savePendingDishWizard(fromChatId, pending.restaurantSlug, pending.dishName, pending.price, 'awaiting_details', catId, catName);
 
-          await sendMessage(
-            fromChatId,
-            `📂 *Sección elegida:* *${catName}*\n━━━━━━━━━━━━━━━━━━━━\nPara mantener la estética limpia de tu carta y cumplir con la **Normativa de Alérgenos (Reglamento UE 1169/2011)**, por favor indícanos:\n\n1️⃣ *Descripción / ingredientes:* (ej: _"Tarta tradicional con base de almendras y canela"_)\n2️⃣ *Alérgenos que contiene:* (ej: _"Gluten, lácteos, huevo, frutos secos"_ o escribe _"Ninguno"_)\n\n✍️ _Responde a este mensaje con los detalles._`
-          );
+          const promptText = `📂 *Sección elegida:* *${catName}*\n━━━━━━━━━━━━━━━━━━━━\nPara mantener la estética limpia de tu carta y cumplir con la **Normativa de Alérgenos (Reglamento UE 1169/2011)**, por favor indícanos:\n\n1️⃣ *Descripción / ingredientes:* (ej: _"Corte selecto a la brasa de encina con patatas"_)\n2️⃣ *Alérgenos que contiene:* (ej: _"Gluten, lácteos, huevo"_ o escribe _"Ninguno"_)\n\n✍️ _Responde a este mensaje con los detalles._`;
+
+          if (messageId) {
+            await editMessageText(fromChatId, messageId, promptText);
+          } else {
+            await sendMessage(fromChatId, promptText);
+          }
           return NextResponse.json({ ok: true, status: 'awaiting_details' });
         }
       }

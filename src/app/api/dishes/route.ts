@@ -1,5 +1,48 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase/client';
+import { initialRestaurants } from '../../../data/restaurants';
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const restaurantId = searchParams.get('restaurant_id');
+
+    if (isSupabaseConfigured() && supabase) {
+      let query = supabase.from('dishes').select('*').order('name', { ascending: true });
+      if (restaurantId) {
+        query = query.eq('restaurant_id', restaurantId);
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        return NextResponse.json({ success: true, source: 'supabase', data });
+      }
+    }
+
+    // Local database fallback
+    let allDishes: any[] = [];
+    for (const r of initialRestaurants) {
+      if (!restaurantId || r.id === restaurantId) {
+        for (const cat of r.menu || []) {
+          for (const d of cat.dishes || []) {
+            allDishes.push({
+              ...d,
+              restaurant_id: r.id,
+              category_id: cat.id,
+            });
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      source: 'local_database',
+      data: allDishes,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {

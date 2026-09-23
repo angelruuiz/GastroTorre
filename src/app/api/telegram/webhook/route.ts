@@ -516,17 +516,21 @@ function renderPinesMenu(): string {
 function classifyTicketType(text: string): { type: string; emoji: string; label: string } {
   const lower = text.toLowerCase();
   
+  // Temporary closure / Cartel cerrado
+  if (/cartel.*cerrad|cerrad[oa]s?|cerrar|cerramos|cierre|vacaciones|descanso|cerrar hoy|estamos cerrad|bajar la persiana|no abrimos|hoy no abrimos|cerrar el local|cerrar el restaurante/i.test(lower)) {
+    return { type: 'CLOSURE', emoji: '🚨', label: 'Cierre Temporal / Cartel Cerrado' };
+  }
+  // Reopening / Cartel abierto
+  if (/cartel.*abiert|abiert[oa]s?|abrir|abrimos|reapertura|volver a abrir|estamos abiert|abrimos hoy|ya abrimos|abrir el local|abrir el restaurante/i.test(lower)) {
+    return { type: 'OPENING', emoji: '🟢', label: 'Reapertura / Cartel Abierto' };
+  }
   // Schedule/hours changes
-  if (/horario|hora de apertura|hora de cierre|abrimos|cerramos a las|turno|servicio de/i.test(lower)) {
+  if (/horario|hora de apertura|hora de cierre|turno|servicio de/i.test(lower)) {
     return { type: 'SCHEDULE', emoji: '🕐', label: 'Cambio de Horario' };
   }
   // Daily menu
   if (/men[úu] del d[ií]a|men[úu] de hoy|primeros?.*segundos?|plato del d[ií]a/i.test(lower)) {
     return { type: 'DAILY_MENU', emoji: '🍽️', label: 'Menú del Día' };
-  }
-  // Temporary closure
-  if (/cerr(amos|ar|ado)\s*(por|esta|la|el|hasta)|vacaciones|cierre temporal|cerrado por/i.test(lower)) {
-    return { type: 'CLOSURE', emoji: '🚨', label: 'Cierre Temporal' };
   }
   // Capacity/aforo
   if (/aforo|capacidad|comensales|plazas|mesas/i.test(lower)) {
@@ -595,6 +599,41 @@ export async function POST(req: NextRequest) {
         const chatIdMatch = messageText.match(/ID:\s*`(\d+)`/);
         const hosteleroChatId = chatIdMatch?.[1];
 
+        // Check if message contains closure or opening request for the restaurant sign
+        const isClosure = /Cartel del Local.*CERRADO|Cierre Temporal|cambia.*cartel.*cerrad|cerrar hoy|marcar.*cerrad|estamos cerrad|bajar la persiana|no abrimos/i.test(messageText);
+        const isOpening = /Cartel del Local.*ABIERTO|Reapertura|cambia.*cartel.*abiert|abrir hoy|marcar.*abiert|estamos abiert|abrimos hoy/i.test(messageText);
+
+        let restaurantSignUpdated = false;
+        let signStatusLabel = '';
+
+        if (isClosure) {
+          const restRes = await applyRestaurantChangeToSupabase(restaurantUuid, {
+            is_active: false,
+            opening_hours: {
+              isTemporarilyClosed: true,
+              closedReason: 'Cerrado temporalmente',
+            },
+          });
+          if (restRes) {
+            restaurantSignUpdated = true;
+            signStatusLabel = '🚨 Cartel: CERRADO temporalmente';
+            console.log(`🚨 [Supabase Cloud] Restaurante ${restaurantUuid} marcado como CERRADO (is_active: false)`);
+          }
+        } else if (isOpening) {
+          const restRes = await applyRestaurantChangeToSupabase(restaurantUuid, {
+            is_active: true,
+            opening_hours: {
+              isTemporarilyClosed: false,
+              closedReason: undefined,
+            },
+          });
+          if (restRes) {
+            restaurantSignUpdated = true;
+            signStatusLabel = '🟢 Cartel: ABIERTO al público';
+            console.log(`🟢 [Supabase Cloud] Restaurante ${restaurantUuid} marcado como ABIERTO (is_active: true)`);
+          }
+        }
+
         let updatedCount = 0;
         for (const item of extracted) {
           const res = await applyDishChangeToSupabase(restaurantUuid, item.dishName, item.updates);
@@ -629,10 +668,10 @@ export async function POST(req: NextRequest) {
           const temporalNotice = isTemporal 
             ? `\n\n🕒 _Nota: Hemos anotado que este cambio es para el fin de semana. El lunes te preguntaremos con 1 clic si deseas restaurar el precio anterior o mantenerlo._`
             : '';
-          await sendMessage(
-            hosteleroChatId,
-            `✅ *¡Cambios publicados!*\n\nTu solicitud ha sido aprobada y los cambios ya están visibles en tu carta digital en vivo.${temporalNotice}\n\n🔗 https://gastrotorre.vercel.app`
-          );
+          const customHosteleroMsg = restaurantSignUpdated
+            ? `✅ *¡Estado de tu restaurante actualizado!*\n\n${signStatusLabel}\n\nLos cambios ya están reflejados en directo en la web.\n\n🔗 https://gastrotorre.vercel.app`
+            : `✅ *¡Cambios publicados!*\n\nTu solicitud ha sido aprobada y los cambios ya están visibles en tu carta digital en vivo.${temporalNotice}\n\n🔗 https://gastrotorre.vercel.app`;
+          await sendMessage(hosteleroChatId, customHosteleroMsg);
         }
 
         const viewMenuMarkup = {
@@ -644,14 +683,18 @@ export async function POST(req: NextRequest) {
         };
 
         const temporalTag = isTemporal ? ' • 🕒 Pregunta de Reversión Programada (Lunes)' : '';
+        const summaryChangesDesc = restaurantSignUpdated 
+          ? (updatedCount > 0 ? `${signStatusLabel} + ${updatedCount} platos` : signStatusLabel)
+          : `${updatedCount} platos`;
+
         await editMessageText(
           fromChatId,
           messageId,
-          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud (${updatedCount} platos)${temporalTag}`,
+          `${messageText}\n\n━━━━━━━━━━━━━━━━━━━━\n✅ *ESTADO: APROBADO Y PUBLICADO EN VIVO EN LA NUBE*\n🕒 ${new Date().toLocaleTimeString('es-ES')} • ☁️ Sincronizado en Supabase Cloud (${summaryChangesDesc})${temporalTag}`,
           viewMenuMarkup
         );
 
-        return NextResponse.json({ ok: true, status: 'approved', changes: updatedCount });
+        return NextResponse.json({ ok: true, status: 'approved', changes: updatedCount, restaurantSignUpdated });
       }
 
       // --- RESTAURAR PRECIO TRAS FIN DE SEMANA (BOTÓN HOSTELERO) ---
@@ -945,6 +988,13 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
       
       const detected = extractChangesFromMessage(text);
       let summary = `• ${ticketType.emoji} *Tipo:* ${ticketType.label}\n`;
+
+      if (ticketType.type === 'CLOSURE') {
+        summary += `• 🚨 *Cartel del Local:* Cambiar estado a CERRADO (Cierre temporal)\n`;
+      } else if (ticketType.type === 'OPENING') {
+        summary += `• 🟢 *Cartel del Local:* Cambiar estado a ABIERTO (Reapertura al público)\n`;
+      }
+
       if (detected.length > 0) {
         for (const item of detected) {
           if (item.updates.price !== undefined) {
@@ -957,7 +1007,7 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
             summary += `• ✅ *${item.dishName}:* Marcar Disponible\n`;
           }
         }
-      } else {
+      } else if (ticketType.type !== 'CLOSURE' && ticketType.type !== 'OPENING') {
         summary += `• 💬 *Petición:* "${text || '📸 Foto adjunta'}"\n`;
       }
 

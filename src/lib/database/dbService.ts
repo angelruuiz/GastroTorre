@@ -144,7 +144,7 @@ export class DatabaseService {
         const { data, error } = await supabase
           .from('restaurants')
           .select('*, menu_categories(*, dishes(*))')
-          .eq('is_active', true);
+          .order('name', { ascending: true });
 
         if (!error && data && data.length > 0) {
           // Transform supabase data to frontend model
@@ -171,9 +171,15 @@ export class DatabaseService {
             features: r.tags || [],
             featured: r.is_featured || false,
             schedule: {
-              days: 'Martes a Domingo',
-              lunch: '13:00 - 17:00',
-              dinner: '20:30 - 23:30',
+              days: typeof r.opening_hours === 'object' && r.opening_hours?.days ? r.opening_hours.days : 'Martes a Domingo',
+              lunch: typeof r.opening_hours === 'object' && r.opening_hours?.lunch ? r.opening_hours.lunch : '13:00 - 17:00',
+              dinner: typeof r.opening_hours === 'object' && r.opening_hours?.dinner ? r.opening_hours.dinner : '20:30 - 23:30',
+              isTemporarilyClosed: Boolean(
+                r.opening_hours?.isTemporarilyClosed ||
+                r.opening_hours?.is_temporarily_closed ||
+                r.is_active === false
+              ),
+              closedReason: r.opening_hours?.closedReason || r.opening_hours?.closed_reason || (r.is_active === false ? 'Cerrado temporalmente' : undefined),
             },
             menu: (r.menu_categories || []).map((cat: any) => ({
               id: cat.id,
@@ -242,18 +248,31 @@ export class DatabaseService {
     // Try cloud sync if configured
     if (isSupabaseConfigured() && supabase) {
       try {
+        const updatePayload: Record<string, any> = {
+          name: updated.name,
+          tagline: updated.tagline,
+          description: updated.description,
+          address: updated.address,
+          phone: updated.phone,
+          whatsapp: updated.whatsapp,
+          zone: updated.zone,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (updated.schedule) {
+          updatePayload.opening_hours = {
+            days: updated.schedule.days,
+            lunch: updated.schedule.lunch,
+            dinner: updated.schedule.dinner,
+            isTemporarilyClosed: updated.schedule.isTemporarilyClosed,
+            closedReason: updated.schedule.closedReason,
+          };
+          updatePayload.is_active = !updated.schedule.isTemporarilyClosed;
+        }
+
         await supabase
           .from('restaurants')
-          .update({
-            name: updated.name,
-            tagline: updated.tagline,
-            description: updated.description,
-            address: updated.address,
-            phone: updated.phone,
-            whatsapp: updated.whatsapp,
-            zone: updated.zone,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq('slug', updated.slug);
       } catch (e) {
         console.warn('Cloud update failed:', e);

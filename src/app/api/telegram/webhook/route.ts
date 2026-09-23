@@ -1012,6 +1012,37 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Extraer y aplicar cambios de información del restaurante (Teléfono, WhatsApp, Eslogan, Aforo, Horario)
+        const restUpdates: Record<string, any> = {};
+
+        const phoneMatch = messageText.match(/(?:tel[ée]fono|tlf|contacto|reservas)[\s:]*([+\d\s]{9,15})/i);
+        if (phoneMatch) {
+          restUpdates.phone = phoneMatch[1].replace(/\s+/g, ' ').trim();
+        }
+        const whatsappMatch = messageText.match(/(?:whatsapp|wasap|wsp)[\s:]*([+\d\s]{9,15})/i);
+        if (whatsappMatch) {
+          restUpdates.whatsapp = whatsappMatch[1].replace(/\s+/g, ' ').trim();
+        }
+
+        const taglineMatch = messageText.match(/(?:eslogan|tagline|lema|subt[ií]tulo)[\s:]*["“]?([^"\n\r]{5,100})["”]?/i);
+        if (taglineMatch) {
+          restUpdates.tagline = taglineMatch[1].trim();
+        }
+
+        const aforoMatch = messageText.match(/(?:aforo|capacidad|plazas|comensales)[\s:]*(\d+)/i);
+        if (aforoMatch) {
+          restUpdates.capacity = parseInt(aforoMatch[1], 10);
+        }
+
+        if (Object.keys(restUpdates).length > 0) {
+          const restOk = await applyRestaurantChangeToSupabase(restaurantUuid, restUpdates);
+          if (restOk) {
+            restaurantSignUpdated = true;
+            signStatusLabel = signStatusLabel ? `${signStatusLabel} • Datos del local actualizados` : 'ℹ️ Información del restaurante actualizada';
+            console.log(`🏠 [Supabase Cloud] Actualizada info de restaurante ${restaurantUuid}:`, restUpdates);
+          }
+        }
+
         let updatedCount = 0;
         for (const item of extracted) {
           const res = await applyDishChangeToSupabase(restaurantUuid, item.dishName, item.updates);

@@ -99,16 +99,39 @@ async function gatherAnalytics(period: 'today' | 'week' | 'month' = 'today'): Pr
   return summary;
 }
 
+function simplifyDishKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && !['para', 'con', 'del', 'los', 'las', 'uds', 'aprox', 'dop', 'igp', 'receta', 'estilo'].includes(w))
+    .slice(0, 3)
+    .sort()
+    .join('_');
+}
+
 async function gatherAllMenus(): Promise<string> {
-  const dishes = await supabaseQuery('dishes', 'select=name,price,is_available,restaurant_id&order=name.asc&limit=200');
+  const dishes = await supabaseQuery('dishes', 'select=id,name,price,is_available,restaurant_id,updated_at&order=updated_at.desc&limit=250');
   if (!dishes.length) return 'No hay platos en la base de datos.';
   
   let text = '';
   for (const [slug, cfg] of Object.entries(RESTAURANT_CONFIG)) {
     const restaurantDishes = dishes.filter(d => d.restaurant_id === cfg.uuid);
     if (restaurantDishes.length > 0) {
-      text += `\n🏠 ${cfg.name}:\n`;
+      // Intelligent deduplication map
+      const seenKeys = new Map<string, any>();
       for (const d of restaurantDishes) {
+        const key = simplifyDishKey(d.name) || d.name.toLowerCase().trim();
+        if (!seenKeys.has(key)) {
+          seenKeys.set(key, d);
+        }
+      }
+
+      text += `\n🏠 ${cfg.name}:\n`;
+      const uniqueDishes = Array.from(seenKeys.values()).sort((a, b) => a.name.localeCompare(b.name));
+      for (const d of uniqueDishes) {
         text += `  - ${d.name}: ${Number(d.price).toFixed(2)}€ ${d.is_available !== false ? '✅' : '🚫 Agotado'}\n`;
       }
     }

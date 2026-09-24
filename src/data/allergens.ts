@@ -572,23 +572,42 @@ export const DIET_FILTERS = [
       return !ids.includes('cacahuetes');
     },
   },
-  {
-    id: 'vegan',
-    name: 'Vegano 100% Vegetal',
-    shortName: '100% Vegano',
-    badgeText: 'Vegano',
-    emoji: '🌱',
-    iconType: 'vegan',
-    check: (dish: any) => Boolean(dish.isVegan),
-  },
-  {
-    id: 'vegetarian',
-    name: 'Vegetariano',
-    shortName: 'Vegetariano',
-    badgeText: 'Vegetariano',
-    emoji: '🥗',
-    iconType: 'veg',
-    check: (dish: any) => Boolean(dish.isVegetarian || dish.isVegan),
-  },
 ];
+
+export function parseAllergensFromText(text: string): string[] {
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const detected = new Set<string>();
+
+  const hasAllergen = (regex: RegExp) => {
+    const globalRegex = new RegExp(regex.source, 'gi');
+    let m: RegExpExecArray | null;
+    while ((m = globalRegex.exec(lower)) !== null) {
+      const start = Math.max(0, m.index - 25);
+      const prefix = lower.substring(start, m.index);
+      if (!/sin\s+|libre\s+de\s+|no\s+lleva\s+|no\s+contiene\s+|apto\s+(?:para\s+)?cel[ií]acos/i.test(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (hasAllergen(/gluten|trigo|harina|pan|centeno|cebada|avena|espelta|kamut|pasta|rebozad|croqueta|panko|hojaldre|tempura|cerveza/i)) detected.add('gluten');
+  if (hasAllergen(/l[aá]cteo|lactosa|leche|queso|mantequilla|nata|yogur|parmesano|mozzarella|burrata|gorgonzola|manchego|bechamel|cuajada|helado/i)) detected.add('lactosa');
+  if (hasAllergen(/huevo|huevos|yema|clara|mayonesa|alioli|tortilla|revuelto|pochado|merengue/i)) detected.add('huevo');
+  if (hasAllergen(/pescado|at[uú]n|merluza|bacalao|salm[oó]n|anchoa|boquer[oó]n|lubina|dorada|corvina|rodaballo|pez\s+espada|rape|sardina/i)) detected.add('pescado');
+  if (hasAllergen(/crust[aá]ceo|marisco|gamba|langostino|camar[oó]n|bogavante|cigala|carabinero|cangrejo|centollo|n[eé]cora/i)) detected.add('crustaceos');
+  if (hasAllergen(/molusco|pulpo|calamar|chipir[oó]n|sepia|mejill[oó]n|almeja|berberecho|zamburiña|ostra|navaja|vieira|caracol/i)) detected.add('moluscos');
+  if (hasAllergen(/fruto.*seco|almendra|nuez|nueces|pistacho|avellana|anacardo|piñ[oó]n|pacana|pralin[eé]|mazap[aá]n/i)) detected.add('frutos-secos');
+  if (hasAllergen(/cacahuete|man[ií]/i)) detected.add('cacahuetes');
+  if (hasAllergen(/soja|soya|tofu|edamame|tamari|miso|tempeh/i)) detected.add('soja');
+  if (hasAllergen(/apio/i)) detected.add('apio');
+  if (hasAllergen(/mostaza|dijon/i)) detected.add('mostaza');
+  if (hasAllergen(/s[eé]samo|ajonjol[ií]|tahini/i)) detected.add('sesamo');
+  if (hasAllergen(/sulfito|vino|cava|sidra|vinagre/i)) detected.add('sulfitos');
+  if (hasAllergen(/altramuz|altramuces|chocho/i)) detected.add('altramuces');
+
+  return Array.from(detected);
+}
+
 

@@ -281,29 +281,75 @@ function parseAllergens(text: string): string[] {
     while ((m = globalRegex.exec(lower)) !== null) {
       const start = Math.max(0, m.index - 25);
       const prefix = lower.substring(start, m.index);
-      if (!/sin\s+|libre\s+de\s+|no\s+lleva\s+|no\s+contiene\s+|apto\s+para\s+cel[ií]acos/i.test(prefix)) {
+      if (!/sin\s+|libre\s+de\s+|no\s+lleva\s+|no\s+contiene\s+|apto\s+(?:para\s+)?cel[ií]acos/i.test(prefix)) {
         return true;
       }
     }
     return false;
   };
 
-  if (hasAllergen(/gluten|trigo|harina|pan|centeno|cebada|avena|espelta|pasta|rebozad|croqueta|panko/i)) detected.add('gluten');
-  if (hasAllergen(/l[aá]cteo|lactosa|leche|queso|mantequilla|nata|yogur|parmesano|mozzarella|gorgonzola/i)) detected.add('lactosa');
-  if (hasAllergen(/huevo|huevos|yema|clara|mayonesa|alioli|tortilla/i)) detected.add('huevo');
-  if (hasAllergen(/pescado|at[uú]n|merluza|bacalao|salm[oó]n|anchoa|lubina|dorada|bonito/i)) detected.add('pescado');
-  if (hasAllergen(/crust[aá]ceo|marisco|gamba|langostino|camar[oó]n|bogavante|cigala|carabinero|cangrejo/i)) detected.add('crustaceos');
-  if (hasAllergen(/molusco|pulpo|calamar|chipir[oó]n|sepia|mejill[oó]n|almeja|berberecho|zamburiña|ostra/i)) detected.add('moluscos');
-  if (hasAllergen(/fruto.*seco|almendra|nuez|nueces|pistacho|avellana|anacardo|piñ[oó]n/i)) detected.add('frutos-secos');
+  if (hasAllergen(/gluten|trigo|harina|pan|centeno|cebada|avena|espelta|kamut|pasta|rebozad|croqueta|panko|hojaldre|tempura|cerveza/i)) detected.add('gluten');
+  if (hasAllergen(/l[aá]cteo|lactosa|leche|queso|mantequilla|nata|yogur|parmesano|mozzarella|burrata|gorgonzola|manchego|bechamel|cuajada|helado/i)) detected.add('lactosa');
+  if (hasAllergen(/huevo|huevos|yema|clara|mayonesa|alioli|tortilla|revuelto|pochado|merengue/i)) detected.add('huevo');
+  if (hasAllergen(/pescado|at[uú]n|merluza|bacalao|salm[oó]n|anchoa|boquer[oó]n|lubina|dorada|corvina|rodaballo|pez\s+espada|rape|sardina/i)) detected.add('pescado');
+  if (hasAllergen(/crust[aá]ceo|marisco|gamba|langostino|camar[oó]n|bogavante|cigala|carabinero|cangrejo|centollo|n[eé]cora/i)) detected.add('crustaceos');
+  if (hasAllergen(/molusco|pulpo|calamar|chipir[oó]n|sepia|mejill[oó]n|almeja|berberecho|zamburiña|ostra|navaja|vieira|caracol/i)) detected.add('moluscos');
+  if (hasAllergen(/fruto.*seco|almendra|nuez|nueces|pistacho|avellana|anacardo|piñ[oó]n|pacana|pralin[eé]|mazap[aá]n/i)) detected.add('frutos-secos');
   if (hasAllergen(/cacahuete|man[ií]/i)) detected.add('cacahuetes');
-  if (hasAllergen(/soja|tofu|edamame/i)) detected.add('soja');
+  if (hasAllergen(/soja|soya|tofu|edamame|tamari|miso|tempeh/i)) detected.add('soja');
   if (hasAllergen(/apio/i)) detected.add('apio');
   if (hasAllergen(/mostaza|dijon/i)) detected.add('mostaza');
   if (hasAllergen(/s[eé]samo|ajonjol[ií]|tahini/i)) detected.add('sesamo');
-  if (hasAllergen(/sulfito|vino|vinagre/i)) detected.add('sulfitos');
-  if (hasAllergen(/altramuz|altramuces/i)) detected.add('altramuces');
+  if (hasAllergen(/sulfito|vino|cava|sidra|vinagre/i)) detected.add('sulfitos');
+  if (hasAllergen(/altramuz|altramuces|chocho/i)) detected.add('altramuces');
 
   return Array.from(detected);
+}
+
+function detectCategoryFromText(text: string, categories: Array<{ id: string; name: string }>): { id: string; name: string } | null {
+  if (!text || categories.length === 0) return null;
+  const normText = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // 1. Coincidencia explícita con nombres de categoría existentes en el restaurante
+  for (const cat of categories) {
+    const catNorm = cat.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const catWords = catNorm.split(/\s+/).filter(w => w.length >= 4 && !['nuestras', 'nuestros', 'para', 'casa'].includes(w));
+    for (const cw of catWords) {
+      const cwRegex = new RegExp(`(?:en\\s+(?:la\\s+secci[óo]n\\s+(?:de\\s+)?)?|a\\s+(?:la\\s+secci[óo]n\\s+(?:de\\s+)?)?|secci[óo]n\\s*[:\\-]?\\s*|categor[ií]a\\s*[:\\-]?\\s*)?${cw}`, 'i');
+      if (cwRegex.test(normText)) {
+        return cat;
+      }
+    }
+  }
+
+  // 2. Mapeo semántico de términos habituales en restauración
+  const categoryKeywords: Array<{ keywords: string[]; matchCategoryNames: string[] }> = [
+    { keywords: ['entrante', 'entrantes', 'huerta', 'picar', 'raciones', 'ensalada', 'tapa', 'tapas', 'primero', 'primeros'], matchCategoryNames: ['entrantes', 'huerta', 'primeros', 'tapas'] },
+    { keywords: ['carne', 'carnes', 'brasa', 'brasas', 'asador', 'chulet', 'ternera', 'buey', 'cordero', 'cochinillo', 'solomillo', 'costillar', 'segundo', 'segundos'], matchCategoryNames: ['carnes', 'brasa', 'asador', 'brasas', 'segundos'] },
+    { keywords: ['pescado', 'pescados', 'salvaje', 'salvajes', 'marisco', 'mariscos', 'mar'], matchCategoryNames: ['pescados', 'mariscos', 'mar', 'salvajes'] },
+    { keywords: ['postre', 'postres', 'dulce', 'dulces', 'tarta', 'tartas', 'helado', 'helados', 'reposteria', 'caseros', 'artesanos'], matchCategoryNames: ['postres', 'dulces', 'artesanos', 'caseros'] },
+    { keywords: ['burger', 'burgers', 'hamburguesa', 'hamburguesas', 'smash'], matchCategoryNames: ['burgers', 'hamburguesas', 'smash'] },
+    { keywords: ['pizza', 'pizzas', 'pasta', 'pastas', 'italiana'], matchCategoryNames: ['pizzas', 'pastas', 'italiana'] },
+    { keywords: ['brunch', 'desayuno', 'desayunos', 'tosta', 'tostas', 'cafe', 'cafes', 'bowls'], matchCategoryNames: ['brunch', 'desayunos', 'tostas', 'cafes'] },
+  ];
+
+  for (const group of categoryKeywords) {
+    const hasKw = group.keywords.some(kw => {
+      const kwRegex = new RegExp(`\\b(?:en\\s+|a\\s+|secci[óo]n\\s+|categor[ií]a\\s+)?${kw}\\b`, 'i');
+      return kwRegex.test(normText);
+    });
+    if (hasKw) {
+      for (const catNameMatch of group.matchCategoryNames) {
+        const found = categories.find(c => {
+          const cNorm = c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return cNorm.includes(catNameMatch);
+        });
+        if (found) return found;
+      }
+    }
+  }
+
+  return null;
 }
 
 function cleanDescription(text: string): string {
@@ -565,6 +611,11 @@ async function applyDishChangeToSupabase(
             });
             if (found) {
               categoryId = found.id;
+            } else {
+              const matchCat = detectCategoryFromText((updates as any).category_name, cats);
+              if (matchCat) {
+                categoryId = matchCat.id;
+              }
             }
           } catch {}
         }
@@ -663,20 +714,25 @@ function cleanDishName(raw: string): string {
   name = name.replace(/[*_~`•💰✅🚫\n\r]/g, ' ').trim();
   
   // 1. Strip leading conversational phrases & verbs repeatedly
-  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+de)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar|nuevo\s+plato|plato|precio\s+de|precio|ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?\s+nada\s+de|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|desactivar|quitar|eliminar|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
+  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+(?:de\s+|del\s+|de\s+la\s+)?)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar|nuevo\s+plato|plato\s+nuevo|plato|precio\s+de|precio\s+del|precio|ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?\s+nada\s+de|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|desactivar|quitar|eliminar|fuera\s+de\s+carta(?:\s+en|\s+a)?|en\s+(?:la\s+secci[óo]n\s+(?:de\s+)?)?[a-záéíóúñ\s]+:|a\s+(?:la\s+secci[óo]n\s+(?:de\s+)?)?[a-záéíóúñ\s]+:|del|de\s+la|de\s+los|de\s+las|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
   
   while (prefixRegex.test(name)) {
     name = name.replace(prefixRegex, '').trim();
   }
   
-  // 2. Strip trailing context words (e.g. ": Marcar Agotado", "como agotada hoy", "para el fin de semana", etc.)
-  const suffixRegex = /(?:[\s,:\-]+(?:como\s+(?:agotad[oa]s?|disponible)|marcar\s+(?:como\s+)?(?:agotad[oa]s?|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
-  name = name.replace(suffixRegex, '').trim();
+  // 2. Strip section prefixes like "Entrantes: ", "Postres: ", "Carnes: "
+  name = name.replace(/^(?:entrantes?|carnes?|pescados?|postres?|bebidas?|principales?|primeros?|segundos?|ensaladas?|raciones?|burgers?|pizzas?|pastas?|brunch|caf[ée]s?)[\s,:\-]+/i, '').trim();
 
-  // 3. Remove leading articles again if any remain
-  name = name.replace(/^(?:el|la|los|las|un|una|unos|unas)\s+/i, '').trim();
+  // 3. Strip trailing context words (e.g. ": Marcar Agotado", "como agotada hoy", "para el fin de semana", etc.)
+  const suffixRegex = /(?:[\s,:\-]+(?:(?:como\s+)?(?:agotad[oa]s?|disponible)(?:\s+(?:hoy|mañana|esta\s+noche|para\s+el\s+servicio))?|marcar\s+(?:como\s+)?(?:agotad[oa]s?|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
+  while (suffixRegex.test(name)) {
+    name = name.replace(suffixRegex, '').trim();
+  }
 
-  // 4. Capitalize first letter properly
+  // 4. Remove leading articles and prepositions again if any remain
+  name = name.replace(/^(?:el|la|los|las|un|una|unos|unas|del|de\s+la|de\s+los|de\s+las|de)\s+/i, '').trim();
+
+  // 5. Capitalize first letter properly
   if (name.length > 0) {
     name = name.charAt(0).toUpperCase() + name.slice(1);
   }
@@ -1519,22 +1575,34 @@ ${summary.trim()}
       const detected = extractChangesFromMessage(text);
 
       // 2. DETECCIÓN PROACTIVA DE NUEVO PLATO NO EXISTENTE EN CARTA
-      // Si el hostelero pide añadir un plato que NO está en su menú, preguntar por sección, descripción y alérgenos
+      // Si el hostelero pide añadir un plato que NO está en su menú, comprobar sección, descripción y alérgenos
       if (detected.length > 0) {
+        const categories = await getRestaurantCategories(restaurantUuid);
         for (const item of detected) {
           if (item.updates.price !== undefined) {
             const existingDish = await findExistingDish(restaurantUuid, item.dishName);
             if (!existingDish) {
               // Es un plato nuevo
-              const hasExplicitDetails = /al[ée]rgenos?|alergias?|ingredientes?|descripci[óo]n|con base de|elaborad[oa]|preparad[oa]/i.test(text) || text.length >= 80;
-              if (!hasExplicitDetails) {
-                // Activar wizard pidiendo sección primero
+              const detectedCat = detectCategoryFromText(text, categories);
+              if (detectedCat) {
+                item.updates.category_id = detectedCat.id;
+                item.updates.category_name = detectedCat.name;
+              }
+
+              const hasExplicitDetails = /al[ée]rgenos?|alergias?|ingredientes?|descripci[óo]n|con base de|elaborad[oa]|preparad[oa]|lleva|contiene/i.test(text) || text.length >= 70;
+              
+              if (!detectedCat && !hasExplicitDetails) {
+                // Activar wizard pidiendo sección primero con botones interactivos
                 await sendCategorySelectionPrompt(chatId, binding.restaurantSlug, item.dishName, item.updates.price);
                 return NextResponse.json({ ok: true, status: 'awaiting_category' });
               } else {
-                // Ya incluyó los detalles en el mismo mensaje
-                item.updates.description = cleanDescription(text);
+                // Ya incluyó los detalles o categoría en el mismo mensaje
+                item.updates.description = cleanDescription(text) || 'Especialidad de la casa elaborada con ingredientes seleccionados.';
                 item.updates.allergens = parseAllergens(text);
+                if (!item.updates.category_name && categories.length > 0) {
+                  item.updates.category_name = categories[0].name;
+                  item.updates.category_id = categories[0].id;
+                }
               }
             }
           }
@@ -1551,13 +1619,16 @@ ${summary.trim()}
 
       if (detected.length > 0) {
         for (const item of detected) {
-          if (item.updates.description || item.updates.allergens) {
+          if (item.updates.description || item.updates.allergens || item.updates.category_name) {
             summary += `• 🍽️ *Plato:* *${item.dishName}*\n`;
             if (item.updates.price !== undefined) {
               summary += `• 💰 *Precio:* ${Number(item.updates.price).toFixed(2)} €\n`;
             }
+            if (item.updates.category_name) {
+              summary += `• 📂 *Sección:* ${item.updates.category_name}\n`;
+            }
             summary += `• 📝 *Descripción:* ${item.updates.description || 'Especialidad de la casa'}\n`;
-            summary += `• 🏷️ *Alérgenos:* ${item.updates.allergens && item.updates.allergens.length > 0 ? item.updates.allergens.join(', ') : 'Ninguno declarado'}\n`;
+            summary += `• 🏷️ *Alérgenos:* ${item.updates.allergens && item.updates.allergens.length > 0 ? item.updates.allergens.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', ') : 'Ninguno declarado'}\n`;
           } else {
             if (item.updates.price !== undefined) {
               summary += `• 💰 *${item.dishName}:* ${Number(item.updates.price).toFixed(2)} €\n`;

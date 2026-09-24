@@ -529,26 +529,26 @@ async function downloadAndUploadTelegramPhoto(fileId: string, restaurantSlug: st
 }
 
 function parseDailyMenu(text: string): { price: number; primeros: string[]; segundos: string[]; postres: string[]; includes: string } | null {
-  if (!/men[úu]\s+del\s+d[ií]a|men[úu]\s+de\s+hoy|men[úu]\s+diario/i.test(text)) {
+  if (!/men[úu]|primeros?|segundos?/i.test(text)) {
     return null;
   }
 
   const priceMatch = text.match(/(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i) || text.match(/precio\s*[:=]?\s*(\d+[\.,]?\d*)/i);
-  const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '.')) : 13.50;
+  const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '.')) : 14.50;
 
   const cleanText = text.replace(/[*_`]/g, '');
 
-  const primerosMatch = cleanText.match(/(?:primeros?|1[ºo\.]?)\s*[:\-]\s*([^2º]+?)(?=(?:segundos?|2[ºo\.]?|postres?|precio|incluye|$))/i);
-  const segundosMatch = cleanText.match(/(?:segundos?|2[ºo\.]?)\s*[:\-]\s*([^3ºpostre]+?)(?=(?:postres?|3[ºo\.]?|precio|incluye|$))/i);
-  const postresMatch = cleanText.match(/(?:postres?|3[ºo\.]?)\s*[:\-]\s*([^precio]+?)(?=(?:precio|incluye|pan|$))/i);
-  const includesMatch = cleanText.match(/(?:incluye|con)\s*[:\-]?\s*([^\n\r.]+)/i);
+  const primerosMatch = cleanText.match(/(?:primeros?|1[ºoª\.]|primer\s+plato)\s*[:\-]?\s*(.+?)(?=(?:segundos?|2[ºoª\.]|segundo\s+plato|postres?|3[ºoª\.]|postre|precio|incluye|$))/i);
+  const segundosMatch = cleanText.match(/(?:segundos?|2[ºoª\.]|segundo\s+plato)\s*[:\-]?\s*(.+?)(?=(?:postres?|3[ºoª\.]|postre|precio|incluye|\d+[\.,]?\d*\s*(?:€|euros?)|$))/i);
+  const postresMatch = cleanText.match(/(?:postres?|3[ºoª\.]|postre)\s*[:\-]?\s*(.+?)(?=(?:precio|incluye|pan|\d+[\.,]?\d*\s*(?:€|euros?)|$))/i);
+  const includesMatch = cleanText.match(/(?:incluye|con)\s*[:\-]?\s*([^,\n\r.]+?(?:vino|bebida|agua|pan|postre|caf[ée])[^\n\r.]*)/i) || cleanText.match(/incluye\s*[:\-]?\s*([^\n\r.]+)/i);
 
   const splitItems = (str: string | undefined) => {
     if (!str) return [];
     return str
-      .split(/\s*(?:o|y|[,;•\n\r])\s*/i)
+      .split(/\s+(?:o|y|e)\s+|\s*[,;•\n\r]\s*/i)
       .map(s => s.trim())
-      .filter(s => s.length >= 3 && !/^(?:primeros?|segundos?|postres?|incluye|precio)$/i.test(s));
+      .filter(s => s.length >= 3 && !/^(?:primeros?|segundos?|postres?|incluye|precio|1[ºoª\.]|2[ºoª\.]|3[ºoª\.])$/i.test(s));
   };
 
   const primeros = splitItems(primerosMatch?.[1]);
@@ -559,8 +559,8 @@ function parseDailyMenu(text: string): { price: number; primeros: string[]; segu
   if (primeros.length > 0 || segundos.length > 0) {
     return {
       price,
-      primeros,
-      segundos,
+      primeros: primeros.length > 0 ? primeros : ['Plato de cuchara o ensalada'],
+      segundos: segundos.length > 0 ? segundos : ['Carne a la brasa o pescado fresco'],
       postres: postres.length > 0 ? postres : ['Postre casero o café'],
       includes,
     };
@@ -1965,8 +1965,8 @@ ${summary.trim()}
         return NextResponse.json({ ok: true, status: 'daily_menu_ticket_created', ticketId, dailyMenu });
       }
 
-      // Consulta de Menú del Día (/menudeldia, "¿cuál es el menú del día?", "¿cuál es el menú de hoy?")
-      if (text.startsWith('/menudeldia') || /^(?:¿\s*)?(?:cu[aá]l\s+es\s+el\s+men[úu](?:\s+(?:de\s+hoy|del\s+d[ií]a))?|qu[eé]\s+hay\s+de\s+men[úu]|men[úu]\s+(?:del\s+d[ií]a|de\s+hoy|diario)|men[úu])(?:\s+[a-záéíóúñ\s]+)?(?:\s*\?)?$/i.test(text)) {
+      // Consulta de Menú del Día (/menudeldia, "¿cuál es el menú del día?", "¿cuál es el menú de hoy?", "¿qué tenemos de menú?", "ver menú del día", etc.)
+      if (text.startsWith('/menudeldia') || /^(?:¿\s*)?(?:cu[aá]l\s+es\s+el\s+men[úu]|qu[eé]\s+(?:hay|tenemos)\s+de\s+men[úu]|men[úu]\s+(?:del\s+d[ií]a|de\s+hoy|diario)|ver\s+men[úu]|consultar\s+men[úu]|men[úu])(?:\s+[a-záéíóúñ\s]+)?(?:\s*\?)?$/i.test(text)) {
         try {
           const restRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=name,opening_hours`, {
             headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },

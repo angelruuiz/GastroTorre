@@ -255,13 +255,13 @@ function detectAddDishWithoutPrice(text: string): string | null {
   }
 
   // Common phrases for adding / creating a dish
-  const addPattern = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|por\s+favor|porfa|oye)?[\s,:\-]*(?:quiero\s+añadir|quiero\s+poner|quiero\s+meter|quiero\s+crear|añad(?:e|ir|eme|irme|enos)?|agreg(?:a|ar|ame|arnos)?|crea(?:r|nos)?|met(?:e|er|ernos)?|pon(?:er)?\s+nuevo\s+plato|pon(?:er)?(?:\s+en\s+la\s+carta|\s+a\s+la\s+carta)?|sub(?:e|ir)\s+nuevo\s+plato|nuevo\s+plato|plato\s+nuevo|incluy(?:e|ir))\s+(?:un|una|el|la|los|las|nuevo\s+plato\s+de\s+|nuevo\s+plato\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s+a\s+la\s+carta|\s+en\s+la\s+carta|\s+al\s+men[úu]|\s+en\s+el\s+men[úu]|\s+a\s+nuestra\s+carta|\s+por\s+favor|\s+gracias)?$/i;
+  const addPattern = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|por\s+favor|porfa|oye)?[\s,:\-]*(?:quiero\s+añadir|quiero\s+poner|quiero\s+meter|quiero\s+crear|añad(?:e|ir|eme|irme|enos)?|agreg(?:a|ar|ame|arnos)?|crea(?:r|nos)?|met(?:e|er|ernos)?|pon(?:er)?\s+nuevo\s+plato|pon(?:er)?(?:\s+en\s+la\s+carta|\s+a\s+la\s+carta)?|sub(?:e|ir)\s+nuevo\s+plato|nuevo\s+plato|plato\s+nuevo|incluy(?:e|ir))\s+(?:(?:un|una|el|la|los|las)\s+)?(?:nuevo\s+plato|plato\s+nuevo|plato\s+de\s+|plato)?\s*[:=\-]?\s*([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s+a\s+la\s+carta|\s+en\s+la\s+carta|\s+al\s+men[úu]|\s+en\s+el\s+men[úu]|\s+a\s+nuestra\s+carta|\s+por\s+favor|\s+gracias)?$/i;
 
   const match = clean.match(addPattern);
   if (match) {
     const raw = match[1];
     const cleaned = cleanDishName(raw);
-    const nonDishWords = ['carta', 'menu', 'plato', 'nuevo', 'nuevo plato', 'precio', 'horario', 'cartel', 'foto'];
+    const nonDishWords = ['carta', 'menu', 'plato', 'nuevo', 'nuevo plato', 'precio', 'horario', 'cartel', 'foto', 'carne', 'pescado', 'stock'];
     if (cleaned && cleaned.length >= 2 && !nonDishWords.includes(cleaned.toLowerCase())) {
       return cleaned;
     }
@@ -279,9 +279,9 @@ function parseAllergens(text: string): string[] {
     const globalRegex = new RegExp(regex.source, 'gi');
     let m: RegExpExecArray | null;
     while ((m = globalRegex.exec(lower)) !== null) {
-      const start = Math.max(0, m.index - 25);
+      const start = Math.max(0, m.index - 30);
       const prefix = lower.substring(start, m.index);
-      if (!/sin\s+|libre\s+de\s+|no\s+lleva\s+|no\s+contiene\s+|apto\s+(?:para\s+)?cel[ií]acos/i.test(prefix)) {
+      if (!/sin\s+|libre\s+de\s+|no\s+lleva\s+|no\s+contiene\s+|ni\s+|apto\s+(?:para\s+)?cel[ií]acos/i.test(prefix)) {
         return true;
       }
     }
@@ -289,7 +289,10 @@ function parseAllergens(text: string): string[] {
   };
 
   if (hasAllergen(/gluten|trigo|harina|pan|centeno|cebada|avena|espelta|kamut|pasta|rebozad|croqueta|panko|hojaldre|tempura|cerveza/i)) detected.add('gluten');
-  if (hasAllergen(/l[aá]cteo|lactosa|leche|queso|mantequilla|nata|yogur|parmesano|mozzarella|burrata|gorgonzola|manchego|bechamel|cuajada|helado/i)) detected.add('lactosa');
+  if (hasAllergen(/l[aá]cteo|lactosa|leche|queso|mantequilla|nata|yogur|parmesano|mozzarella|burrata|gorgonzola|manchego|bechamel|cuajada|helado/i)) {
+    detected.add('lacteos');
+    detected.add('lactosa');
+  }
   if (hasAllergen(/huevo|huevos|yema|clara|mayonesa|alioli|tortilla|revuelto|pochado|merengue/i)) detected.add('huevo');
   if (hasAllergen(/pescado|at[uú]n|merluza|bacalao|salm[oó]n|anchoa|boquer[oó]n|lubina|dorada|corvina|rodaballo|pez\s+espada|rape|sardina/i)) detected.add('pescado');
   if (hasAllergen(/crust[aá]ceo|marisco|gamba|langostino|camar[oó]n|bogavante|cigala|carabinero|cangrejo|centollo|n[eé]cora/i)) detected.add('crustaceos');
@@ -404,7 +407,7 @@ async function findExistingDish(restaurantUuid: string, dishName: string): Promi
 
   for (const q of searchQueries) {
     try {
-      const getUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.${q}&select=id,name,price,description,allergens&limit=1`;
+      const getUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.${q}&select=id,name,price,description,allergens,is_available&limit=1`;
       const getRes = await fetch(getUrl, {
         headers: {
           'apikey': SUPABASE_SECRET_KEY,
@@ -714,7 +717,7 @@ function cleanDishName(raw: string): string {
   name = name.replace(/[*_~`•💰✅🚫\n\r]/g, ' ').trim();
   
   // 1. Strip leading conversational phrases & verbs repeatedly
-  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+(?:de\s+|del\s+|de\s+la\s+)?)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar|nuevo\s+plato|plato\s+nuevo|plato|precio\s+de|precio\s+del|precio|ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?\s+nada\s+de|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|desactivar|quitar|eliminar|fuera\s+de\s+carta(?:\s+en|\s+a)?|en\s+(?:la\s+secci[óo]n\s+(?:de\s+)?)?[a-záéíóúñ\s]+:|a\s+(?:la\s+secci[óo]n\s+(?:de\s+)?)?[a-záéíóúñ\s]+:|del|de\s+la|de\s+los|de\s+las|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
+  const prefixRegex = /^(?:hola(?:\s+[a-záéíóúñ]+)?|buenas|oye|por\s+favor|porfa|quiero\s+que\s+pongas|pon(?:er)?|sub(?:e|ir)|baj(?:a|ar)|cambi(?:a|ar)(?:\s+el\s+precio\s+(?:de\s+|del\s+|de\s+la\s+)?)?|pas(?:a|ar)|añad(?:e|ir)(?:\s+nuevo\s+plato)?|crea(?:r)?(?:\s+nuevo\s+plato)?|marcar(?:\s+como)?|nuevo\s+plato|plato\s+nuevo|plato|precio\s+de|precio\s+del|precio|ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?\s+nada\s+de|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|desactivar|quitar|eliminar|agotad[oa]s?|disponibles?|repuest[oa]s?|fuera\s+de\s+carta(?:\s+en|\s+a)?|en\s+(?:la\s+secci[óo]n\s+(?:de\s+)?)?[a-záéíóúñ\s]+:|a\s+(?:la\s+secci[óo]n\s+(?:de\s+)?)?[a-záéíóúñ\s]+:|del|de\s+la|de\s+los|de\s+las|de|el|la|los|las|un|una|unos|unas)[\s,:\-]+/i;
   
   while (prefixRegex.test(name)) {
     name = name.replace(prefixRegex, '').trim();
@@ -724,15 +727,25 @@ function cleanDishName(raw: string): string {
   name = name.replace(/^(?:entrantes?|carnes?|pescados?|postres?|bebidas?|principales?|primeros?|segundos?|ensaladas?|raciones?|burgers?|pizzas?|pastas?|brunch|caf[ée]s?)[\s,:\-]+/i, '').trim();
 
   // 3. Strip trailing context words (e.g. ": Marcar Agotado", "como agotada hoy", "para el fin de semana", etc.)
-  const suffixRegex = /(?:[\s,:\-]+(?:(?:como\s+)?(?:agotad[oa]s?|disponible)(?:\s+(?:hoy|mañana|esta\s+noche|para\s+el\s+servicio))?|marcar\s+(?:como\s+)?(?:agotad[oa]s?|disponible)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
+  const suffixRegex = /(?:[\s,:\-]+(?:(?:como\s+)?(?:agotad[oa]s?|disponibles?)(?:\s+(?:hoy|mañana|esta\s+noche|para\s+el\s+servicio))?|marcar\s+(?:como\s+)?(?:agotad[oa]s?|disponibles?)|para\s+(?:el\s+)?(?:servicio|fin\s+de\s+semana|hoy|mañana|este\s+fin\s+de\s+semana).*|de\s+la\s+carta|en\s+carta|por\s+ración|la\s+ración|en\s+el\s+menú|del\s+menú|por\s+favor|gracias|hoy|mañana|esta\s+noche|agotad[oa]s?|sin\s+stock|terminad[oa]s?|acabad[oa]s?))$/i;
   while (suffixRegex.test(name)) {
     name = name.replace(suffixRegex, '').trim();
   }
 
-  // 4. Remove leading articles and prepositions again if any remain
+  // 4. Remove trailing standalone modifier words
+  name = name.replace(/\s+(?:agotad[oa]s?|disponibles?|repuest[oa]s?|activad[oa]s?|hoy|mañana|sin\s+stock)$/i, '').trim();
+
+  // 5. Remove leading articles and prepositions again if any remain
   name = name.replace(/^(?:el|la|los|las|un|una|unos|unas|del|de\s+la|de\s+los|de\s+las|de)\s+/i, '').trim();
 
-  // 5. Capitalize first letter properly
+  // 6. Filter isolated non-dish generic words
+  const lowerName = name.toLowerCase();
+  const genericNonDishes = ['carne', 'carnes', 'pescado', 'pescados', 'comida', 'bebida', 'bebidas', 'stock', 'género', 'genero', 'producto', 'productos', 'mesa', 'cuenta', 'servicio'];
+  if (genericNonDishes.includes(lowerName)) {
+    return '';
+  }
+
+  // 7. Capitalize first letter properly
   if (name.length > 0) {
     name = name.charAt(0).toUpperCase() + name.slice(1);
   }
@@ -744,21 +757,25 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
   const changes: Array<{ dishName: string; updates: { price?: number; isAvailable?: boolean; photo_url?: string; description?: string; allergens?: string[]; category_id?: string; category_name?: string } }> = [];
 
   // Check if it's a rich new dish ticket card
-  const platoMatch = text.match(/[•\s]*🍽️\s*\*?(?:Nombre|Plato)\*?:\s*\*?([^*\n]+?)\*?(?:\s*\(([\d\.,]+)\s*€\))?(?:\n|$)/i);
-  const descMatch = text.match(/[•\s]*📝\s*\*?Descripci[óo]n\*?:\s*([^\n]+)/i);
-  const alergMatch = text.match(/[•\s]*🏷️\s*\*?Al[ée]rgenos\*?:\s*([^\n]+)/i);
-  const newPriceMatch = text.match(/[•\s]*💰\s*\*?Precio\*?:\s*([\d\.,]+)\s*€/i);
-  const sectionMatch = text.match(/[•\s]*📂\s*\*?Secci[óo]n\*?:\s*([^\n]+)/i);
+  const platoMatch = text.match(/[•\s]*🍽️\s*\*?(?:Nombre|Plato)\*?:\*?\s*([^\n\r]+)/i);
+  const descMatch = text.match(/[•\s]*📝\s*\*?Descripci[óo]n\*?:\*?\s*([^\n\r]+)/i);
+  const alergMatch = text.match(/[•\s]*🏷️\s*\*?Al[ée]rgenos\*?:\*?\s*([^\n\r]+)/i);
+  const newPriceMatch = text.match(/[•\s]*💰\s*\*?Precio\*?:\*?\s*([\d\.,]+)\s*€/i);
+  const sectionMatch = text.match(/[•\s]*📂\s*\*?Secci[óo]n\*?:\*?\s*([^\n\r]+)/i);
 
   if (platoMatch) {
-    const dishName = cleanDishName(platoMatch[1]);
-    const priceStr = platoMatch[2] || (newPriceMatch ? newPriceMatch[1] : null);
+    let rawDish = platoMatch[1].replace(/[*_`]/g, '').trim();
+    const priceFromDishMatch = rawDish.match(/\(([\d\.,]+)\s*€\)/);
+    const priceStr = priceFromDishMatch ? priceFromDishMatch[1] : (newPriceMatch ? newPriceMatch[1] : null);
+    rawDish = rawDish.replace(/\([\d\.,]+\s*€\)/, '').trim();
+    const dishName = cleanDishName(rawDish);
+
     const priceVal = priceStr ? parseFloat(priceStr.replace(',', '.')) : undefined;
     const desc = descMatch ? cleanDescription(descMatch[1]) : undefined;
     const allergens = alergMatch ? parseAllergens(alergMatch[1]) : undefined;
     const categoryName = sectionMatch ? sectionMatch[1].replace(/[*_`]/g, '').trim() : undefined;
 
-    if (dishName) {
+    if (dishName && (priceVal !== undefined || desc || allergens || categoryName)) {
       changes.push({
         dishName,
         updates: {
@@ -780,32 +797,47 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
     if (!line) continue;
 
     // 1. Structured summary lines (High priority when approving from Admin card)
-    if (line.includes('💰')) {
-      const m = line.match(/💰\s*\*?([^*:\n]+?)\*?:\s*(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
+    if (line.includes('💰') && !line.includes('Precio Actual') && !line.includes('Pagar')) {
+      const stripped = line.replace(/[*_`•💰]/g, '').trim();
+      const m = stripped.match(/^([^:\n]+?)\s*:\s*(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
       if (m) {
-        changes.push({ dishName: cleanDishName(m[1]), updates: { price: parseFloat(m[2].replace(',', '.')) } });
-        continue;
+        const dish = cleanDishName(m[1]);
+        const price = parseFloat(m[2].replace(',', '.'));
+        if (dish && !isNaN(price)) {
+          changes.push({ dishName: dish, updates: { price } });
+          continue;
+        }
       }
     }
 
     if (line.includes('🚫')) {
-      const m = line.match(/🚫\s*\*?([^*:\n]+?)\*?(?::|\s+Marcar|\s+Agotad)/i);
+      const stripped = line.replace(/[*_`•🚫]/g, '').trim();
+      const m = stripped.match(/^([^:\n]+?)\s*:\s*(?:Marcar\s+)?Agotad/i) ||
+                stripped.match(/^([^:\n]+?)\s+Agotad/i);
       if (m) {
-        changes.push({ dishName: cleanDishName(m[1]), updates: { isAvailable: false } });
-        continue;
+        const dish = cleanDishName(m[1]);
+        if (dish) {
+          changes.push({ dishName: dish, updates: { isAvailable: false } });
+          continue;
+        }
       }
     }
 
     if (line.includes('✅') && !line.includes('Oficial') && !line.includes('ESTADO') && !line.includes('Sincronizado')) {
-      const m = line.match(/✅\s*\*?([^*:\n]+?)\*?(?::|\s+Marcar|\s+Disponible)/i);
+      const stripped = line.replace(/[*_`•✅]/g, '').trim();
+      const m = stripped.match(/^([^:\n]+?)\s*:\s*(?:Marcar\s+)?Disponible/i) ||
+                stripped.match(/^([^:\n]+?)\s+Disponible/i);
       if (m) {
-        changes.push({ dishName: cleanDishName(m[1]), updates: { isAvailable: true } });
-        continue;
+        const dish = cleanDishName(m[1]);
+        if (dish) {
+          changes.push({ dishName: dish, updates: { isAvailable: true } });
+          continue;
+        }
       }
     }
 
     // 2. Conversational clauses in raw message text
-    const clauses = line.split(/\s+(?:y|e|además|tambien|también|,|;)\s+/i);
+    const clauses = line.split(/(?:\s+(?:y|e|además|tambien|también)\s+|\s*[,;]\s*)/i);
     for (const clause of clauses) {
       // A. Extracción de precio
       const priceMatch = clause.match(/(?:Precio:\s*|a\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?::\s*|\s+a\s+|\s*->\s*|\s+pasa\s+a\s+(?:costar\s+)?)(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i);
@@ -824,7 +856,7 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
 
       // B. Extracción de plato/producto agotado (Frases coloquiales y directas)
       const agotadoMatch = 
-        clause.match(/(?:ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?(?:\s+nada\s+de)?|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|sin\s+stock\s+de|quitar|desactivar|marcar\s+como\s+agotad[oa])\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
+        clause.match(/(?:^|\s*)(?:ya\s+no\s+(?:nos\s+)?quedan?|no\s+(?:nos\s+)?quedan?(?:\s+nada\s+de)?|se\s+(?:nos\s+)?ha\s+(?:terminado|acabado|agotado)|hemos\s+(?:terminado|acabado|agotado|vendido\s+tod[ao]s?)|ya\s+no\s+hay|no\s+hay|no\s+tenemos|sin\s+stock\s+de|quitar|desactivar|marcar\s+(?:como\s+)?agotad[oa]|agotad[oa]s?)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
         clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:agotad[oa]s?|sin\s+stock|no\s+queda|no\s+quedan|terminad[oa]s?|acabad[oa]s?)/i);
 
       if (agotadoMatch) {
@@ -841,8 +873,8 @@ function extractChangesFromMessage(text: string): Array<{ dishName: string; upda
 
       // C. Extracción de plato/producto disponible o repuesto
       const disponibleMatch = 
-        clause.match(/(?:ya\s+(?:nos\s+)?ha\s+llegado|volvemos\s+a\s+tener|ya\s+tenemos|vuelve\s+a\s+haber|hemos\s+repuesto|activar|reponer|marcar\s+como\s+disponible)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
-        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|activad[oa]|repuest[oa]|de\s+vuelta)/i);
+        clause.match(/(?:^|\s*)(?:ya\s+(?:nos\s+)?ha\s+llegado|volvemos\s+a\s+tener|ya\s+tenemos|vuelve\s+a\s+haber|hemos\s+repuesto|activar|reponer|marcar\s+(?:como\s+)?disponible|disponibles?)\s+(?:de\s+|el\s+|la\s+|los\s+|las\s+|nuestr[ao]s?\s+)?([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+)/i) ||
+        clause.match(/([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)\s+(?:como\s+)?(?:disponible|disponibles|activad[oa]|repuest[oa]|de\s+vuelta)/i);
 
       if (disponibleMatch) {
         const target = disponibleMatch[1] || disponibleMatch[2];
@@ -1572,8 +1604,8 @@ ${summary.trim()}
         }
       }
 
-      // Consultas de Precio (ej: "¿Cuánto vale el chuletón?", "¿A cuánto está la tarta?")
-      const priceQueryMatch = text.match(/^(?:¿\s*)?(?:a\s+cu[aá]nto\s+(?:est[aá]|tenemos|vale|sale)|cu[aá]nto\s+(?:vale|cuesta|sale|est[aá]|tenemos)|precio\s+(?:de\s+|del\s+|de\s+la\s+)?|qu[eé]\s+precio\s+tiene)\s+([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s*\?)?$/i);
+      // Consultas de Precio (ej: "¿Cuánto vale el chuletón?", "¿A cuánto están las croquetas?", "¿Qué precio tienen?")
+      const priceQueryMatch = text.match(/^(?:¿\s*)?(?:a\s+cu[aá]nto\s+(?:est[aá]n?|tenemos|tienen?|vale[n]?|sale[n]?)|cu[aá]nto\s+(?:vale[n]?|cuesta[n]?|sale[n]?|est[aá]n?|tenemos|tienen?)|precio\s+(?:de\s+|del\s+|de\s+la\s+|de\s+los\s+|de\s+las\s+)?|qu[eé]\s+precio\s+tienen?)\s+([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s*\?)?$/i);
       if (priceQueryMatch && !/\d+[\.,]?\d*\s*(?:€|euros?|EUR)/i.test(text)) {
         const dishSearch = cleanDishName(priceQueryMatch[1]);
         if (dishSearch) {
@@ -1596,7 +1628,7 @@ ${summary.trim()}
       }
 
       // Consultas de Horario (ej: "¿A qué hora cerramos hoy?", "¿Cuál es nuestro horario?", "horario")
-      if (/^(?:¿\s*)?(?:a\s+qu[eé]\s+hora\s+(?:abrimos|cerramos|abre|cierra)|cu[aá]l\s+es\s+nuestro\s+horario|qu[eé]\s+horario\s+tenemos|horarios?|a\s+qu[eé]\s+hora\s+cerramos\s+hoy)(?:\s*\?)?$/i.test(text)) {
+      if (/(?:a\s+qu[eé]\s+hora|cu[aá]l\s+es\s+nuestro\s+horario|qu[eé]\s+horario|horarios?|cuando\s+abrimos|cuando\s+cerramos)/i.test(text) && !/(?:nuevo\s+horario|cambia.*horario|cambiar.*horario)/i.test(text)) {
         try {
           const restRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=name,opening_hours`, {
             headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
@@ -1630,7 +1662,7 @@ ${summary.trim()}
 
       // Consultas de Contacto (ej: "¿Qué teléfono tenemos puesto?", "nuestro whatsapp", "contacto")
       const normContactText = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (/(?:telefono|whatsapp|contacto).*tenemos|tenemos.*(?:telefono|whatsapp|contacto)|datos\s+del\s+local|^contacto$/i.test(normContactText)) {
+      if (/(?:telefono|whatsapp|contacto|datos\s+del\s+local|direccion|ubicacion|eslogan)/i.test(normContactText) && !/(?:nuevo|cambia|actualiza|poner|modificar|\d{3}\s*\d{2,3})/i.test(normContactText)) {
         try {
           const restRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=name,phone,whatsapp,address,tagline`, {
             headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },

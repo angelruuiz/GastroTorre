@@ -142,6 +142,12 @@ async function getPendingDishWizard(chatId: string): Promise<{ dishName: string;
     if (res.ok) {
       const data = await res.json();
       if (data && data.length > 0) {
+        if (data[0].created_at) {
+          const ageMs = Date.now() - new Date(data[0].created_at).getTime();
+          if (ageMs > 10 * 60 * 1000) {
+            return null; // Expired after 10 minutes
+          }
+        }
         const parts = (data[0].user_agent || '').split(':');
         if (parts.length >= 5) {
           const restaurantSlug = parts[2];
@@ -421,6 +427,143 @@ async function findExistingDish(restaurantUuid: string, dishName: string): Promi
         }
       }
     } catch {}
+  }
+
+  return null;
+}
+
+async function findAllMatchingDishes(restaurantUuid: string, dishSearch: string): Promise<Array<any>> {
+  const stopWords = new Set([
+    'de', 'del', 'la', 'el', 'las', 'los', 'con', 'y', 'en', 'sobre', 'al', 'a', 'para',
+    'nuestro', 'nuestros', 'nuestra', 'nuestras', 'casa', 'especial',
+    'poner', 'pon', 'sube', 'subir', 'bajar', 'cambiar', 'cambia', 'hola', 'favor', 'porfa', 'nuevo', 'precio'
+  ]);
+
+  let words = dishSearch
+    .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
+
+  if (words.length === 0) {
+    words = dishSearch
+      .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length >= 3);
+  }
+
+  if (words.length === 0) return [];
+
+  // 1. If compound search (e.g. "Solomillo Ternera") yields multiple matches
+  if (words.length >= 2) {
+    try {
+      const compoundUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.*${encodeURIComponent(words[0])}*${encodeURIComponent(words[1])}*&select=id,name,price,description,allergens,is_available&limit=6`;
+      const cRes = await fetch(compoundUrl, {
+        headers: { apikey: SUPABASE_SECRET_KEY, Authorization: `Bearer ${SUPABASE_SECRET_KEY}` },
+      });
+      if (cRes.ok) {
+        const cList = await cRes.json();
+        if (cList && cList.length >= 2) {
+          return cList;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Primary keyword search (e.g. "Tarta", "Solomillo", "Cordero")
+  const primaryWord = words[0];
+  try {
+    const primaryUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&name=ilike.*${encodeURIComponent(primaryWord)}*&select=id,name,price,description,allergens,is_available&limit=6`;
+    const pRes = await fetch(primaryUrl, {
+      headers: { apikey: SUPABASE_SECRET_KEY, Authorization: `Bearer ${SUPABASE_SECRET_KEY}` },
+    });
+    if (pRes.ok) {
+      const pList = await pRes.json();
+      if (pList && pList.length >= 2) {
+        return pList;
+      }
+    }
+  } catch {}
+
+  return [];
+}
+
+async function downloadAndUploadTelegramPhoto(fileId: string, restaurantSlug: string): Promise<string | null> {
+  try {
+    const fileInfo = await apiCall('getFile', { file_id: fileId });
+    if (!fileInfo.ok || !fileInfo.result?.file_path) {
+      console.warn('Could not get file path for file_id:', fileId);
+      return null;
+    }
+
+    const filePath = fileInfo.result.file_path;
+    const directUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+
+    const imgRes = await fetch(directUrl);
+    if (!imgRes.ok) return null;
+
+    const arrayBuffer = await imgRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const storagePath = `${restaurantSlug}/${Date.now()}_${fileId.slice(-8)}.jpg`;
+
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/dishes/${storagePath}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_SECRET_KEY,
+        'Authorization': `Bearer ${SUPABASE_SECRET_KEY}`,
+        'Content-Type': 'image/jpeg',
+      },
+      body: buffer,
+    });
+
+    if (uploadRes.ok) {
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/dishes/${storagePath}`;
+      console.log('✅ [Supabase Storage] Photo uploaded successfully:', publicUrl);
+      return publicUrl;
+    }
+  } catch (err: any) {
+    console.warn('Exception uploading photo to Supabase:', err?.message);
+  }
+  return null;
+}
+
+function parseDailyMenu(text: string): { price: number; primeros: string[]; segundos: string[]; postres: string[]; includes: string } | null {
+  if (!/men[úu]\s+del\s+d[ií]a|men[úu]\s+de\s+hoy|men[úu]\s+diario/i.test(text)) {
+    return null;
+  }
+
+  const priceMatch = text.match(/(\d+[\.,]?\d*)\s*(?:€|euros?|EUR)/i) || text.match(/precio\s*[:=]?\s*(\d+[\.,]?\d*)/i);
+  const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '.')) : 13.50;
+
+  const cleanText = text.replace(/[*_`]/g, '');
+
+  const primerosMatch = cleanText.match(/(?:primeros?|1[ºo\.]?)\s*[:\-]\s*([^2º]+?)(?=(?:segundos?|2[ºo\.]?|postres?|precio|incluye|$))/i);
+  const segundosMatch = cleanText.match(/(?:segundos?|2[ºo\.]?)\s*[:\-]\s*([^3ºpostre]+?)(?=(?:postres?|3[ºo\.]?|precio|incluye|$))/i);
+  const postresMatch = cleanText.match(/(?:postres?|3[ºo\.]?)\s*[:\-]\s*([^precio]+?)(?=(?:precio|incluye|pan|$))/i);
+  const includesMatch = cleanText.match(/(?:incluye|con)\s*[:\-]?\s*([^\n\r.]+)/i);
+
+  const splitItems = (str: string | undefined) => {
+    if (!str) return [];
+    return str
+      .split(/\s*(?:o|y|[,;•\n\r])\s*/i)
+      .map(s => s.trim())
+      .filter(s => s.length >= 3 && !/^(?:primeros?|segundos?|postres?|incluye|precio)$/i.test(s));
+  };
+
+  const primeros = splitItems(primerosMatch?.[1]);
+  const segundos = splitItems(segundosMatch?.[1]);
+  const postres = splitItems(postresMatch?.[1]);
+  const includes = includesMatch?.[1]?.trim() || 'Pan, bebida y postre o café';
+
+  if (primeros.length > 0 || segundos.length > 0) {
+    return {
+      price,
+      primeros,
+      segundos,
+      postres: postres.length > 0 ? postres : ['Postre casero o café'],
+      includes,
+    };
   }
 
   return null;
@@ -1010,6 +1153,83 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // --- DESAMBIGUACIÓN DE PLATO POR BOTÓN HOSTELERO ---
+      if (data.startsWith('amb_')) {
+        const parts = data.split('_');
+        const dishId = parts[1];
+        const action = parts[2]; // 'p', 'out', 'in'
+        const val = parts[3]; // price if action === 'p'
+
+        await answerCallbackQuery(callback.id, '✅ Plato seleccionado');
+
+        const fromChatId = String(callback.message?.chat?.id || ADMIN_CHAT_ID);
+        const messageId = callback.message?.message_id;
+
+        const dishRes = await fetch(`${SUPABASE_URL}/rest/v1/dishes?id=eq.${dishId}&select=id,name,price,restaurant_id`, {
+          headers: { apikey: SUPABASE_SECRET_KEY, Authorization: `Bearer ${SUPABASE_SECRET_KEY}` },
+        });
+        const dishData = await dishRes.json();
+        const selectedDish = dishData?.[0];
+
+        if (selectedDish) {
+          const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+          let actionLabel = 'Modificación de Carta';
+          let changesSummary = '';
+
+          if (action === 'p' && val) {
+            const newPrice = parseFloat(val);
+            actionLabel = 'Cambio de Precio';
+            changesSummary = `• 💰 *${selectedDish.name}:* ${newPrice.toFixed(2)} € (Precio anterior: ${Number(selectedDish.price).toFixed(2)} €)`;
+          } else if (action === 'out') {
+            actionLabel = 'Disponibilidad de Plato';
+            changesSummary = `• 🚫 *${selectedDish.name}:* Marcar Agotado`;
+          } else {
+            actionLabel = 'Disponibilidad de Plato';
+            changesSummary = `• ✅ *${selectedDish.name}:* Marcar Disponible`;
+          }
+
+          if (messageId) {
+            await editMessageText(
+              fromChatId,
+              messageId,
+              `✅ *Plato confirmado:* *${selectedDish.name}*\n\n${changesSummary}\n\n⏳ Solicitud enviada al Superadmin (#${ticketId}).`
+            );
+          } else {
+            await sendMessage(
+              fromChatId,
+              `✅ *Plato confirmado:* *${selectedDish.name}*\n\n${changesSummary}\n\n⏳ Solicitud enviada al Superadmin (#${ticketId}).`
+            );
+          }
+
+          const adminNotificationText = 
+`🎫 *TICKET CLOUD #${ticketId} — Asador Los Jarales*
+━━━━━━━━━━━━━━━━━━━━
+🏠 *Restaurante:* Asador Los Jarales (✅ *Oficial*)
+👤 *Hostelero:* ${callback.from?.first_name || 'Hostelero'} (ID: \`${fromChatId}\`)
+🔄 *Categoría:* ${actionLabel}
+💬 *Mensaje:*
+_Plato seleccionado tras desambiguación: ${selectedDish.name}_
+
+🤖 *Cambios detectados:*
+• 🔄 *Tipo:* ${actionLabel}
+${changesSummary}
+━━━━━━━━━━━━━━━━━━━━
+☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;
+
+          const keyboard = {
+            inline_keyboard: [
+              [
+                { text: '✅ Aprobar y Publicar en Web', callback_data: `app_${ticketId}` },
+                { text: '❌ Rechazar Solicitud', callback_data: `rej_${ticketId}` },
+              ],
+            ],
+          };
+
+          await sendMessage(ADMIN_CHAT_ID, adminNotificationText, keyboard);
+          return NextResponse.json({ ok: true, status: 'disambiguated_ticket_created', ticketId });
+        }
+      }
+
       // --- APROBAR TICKET ---
       if (data.startsWith('app_') || data.startsWith('approve_')) {
         const ticketId = data.replace('app_', '').replace('approve_', '');
@@ -1130,6 +1350,56 @@ export async function POST(req: NextRequest) {
             restaurantSignUpdated = true;
             signStatusLabel = signStatusLabel ? `${signStatusLabel} • Datos del local actualizados` : 'ℹ️ Información del restaurante actualizada';
             console.log(`🏠 [Supabase Cloud] Actualizada info de restaurante ${restaurantUuid}:`, restUpdates);
+          }
+        }
+
+        // Si el ticket incluye Menú del Día, actualizar opening_hours.daily_menu
+        const dailyMenuParsed = parseDailyMenu(messageText);
+        if (dailyMenuParsed) {
+          let existingHours: any = {};
+          try {
+            const hRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=opening_hours`, {
+              headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+            });
+            if (hRes.ok) {
+              const hData = await hRes.json();
+              if (hData && hData[0]?.opening_hours && typeof hData[0].opening_hours === 'object') {
+                existingHours = hData[0].opening_hours;
+              }
+            }
+          } catch {}
+
+          await applyRestaurantChangeToSupabase(restaurantUuid, {
+            opening_hours: {
+              ...existingHours,
+              daily_menu: {
+                date: new Date().toISOString().split('T')[0],
+                price: dailyMenuParsed.price,
+                primeros: dailyMenuParsed.primeros,
+                segundos: dailyMenuParsed.segundos,
+                postres: dailyMenuParsed.postres,
+                includes: dailyMenuParsed.includes,
+              },
+            },
+          });
+          restaurantSignUpdated = true;
+          signStatusLabel = signStatusLabel ? `${signStatusLabel} • Menú del día publicado` : '🍴 Menú del día publicado';
+          console.log(`🍴 [Supabase Cloud] Menú del día actualizado para ${restaurantUuid}`);
+        }
+
+        // Si el ticket incluye URL de foto de plato
+        const photoUrlMatch = messageText.match(/https:\/\/[^\s\n\r"']+\/storage\/v1\/object\/public\/dishes\/[^\s\n\r"']+/i);
+        if (photoUrlMatch) {
+          const photoUrl = photoUrlMatch[0];
+          const dishMatch = messageText.match(/• 🍽️ \*Plato:\* \*([^*]+)\*/i) || messageText.match(/• 📸 \*Plato:\* \*([^*]+)\*/i);
+          if (dishMatch) {
+            const dName = dishMatch[1].trim();
+            const photoApplied = await applyDishChangeToSupabase(restaurantUuid, dName, { photo_url: photoUrl });
+            if (photoApplied.success) {
+              restaurantSignUpdated = true;
+              signStatusLabel = signStatusLabel ? `${signStatusLabel} • Foto de ${dName} actualizada` : `📸 Foto de ${dName} actualizada`;
+              console.log(`📸 [Supabase Cloud] Photo URL applied to dish ${dName}: ${photoUrl}`);
+            }
           }
         }
 
@@ -1459,8 +1729,83 @@ Puedes enviarme mensajes directos como si hablaras con un asistente:
         return NextResponse.json({ ok: true });
       }
 
+      // GESTIÓN DE FOTOGRAFÍAS DE PLATOS (Compresión y almacenamiento optimizado en Supabase Storage)
+      if (msg.photo && Array.isArray(msg.photo) && msg.photo.length > 0) {
+        // Seleccionamos resolución balanceada (~800px / <150KB) para optimizar almacenamiento y velocidad web
+        const bestPhoto = msg.photo[Math.min(msg.photo.length - 1, 2)];
+        const photoUrl = await downloadAndUploadTelegramPhoto(bestPhoto.file_id, binding.restaurantSlug);
+
+        const caption = (msg.caption || text || '').trim();
+        let matchedDishName = cleanDishName(caption.replace(/(?:foto|plato|para|de|del|imagen)\s*/gi, '').trim());
+
+        if (matchedDishName) {
+          const existing = await findExistingDish(restaurantUuid, matchedDishName);
+          if (existing) {
+            matchedDishName = existing.name;
+          }
+        }
+
+        if (!matchedDishName && caption.length > 2) {
+          matchedDishName = caption;
+        }
+
+        if (matchedDishName && photoUrl) {
+          const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+          const summary = `• 📸 *Tipo:* Fotografía de Plato\n• 🍽️ *Plato:* *${matchedDishName}*\n• 🖼️ *Foto:* [Ver Imagen](${photoUrl})\n• 🔗 *URL:* ${photoUrl}`;
+
+          await sendMessage(
+            chatId,
+            `📸 *¡Fotografía procesada y optimizada con éxito!*\n\n🍽️ *Plato:* *${matchedDishName}*\n\n⏳ Solicitud enviada al Superadmin para publicar la foto en tu carta digital (#${ticketId}).`
+          );
+
+          const adminNotificationText = 
+`🎫 *TICKET CLOUD #${ticketId} — ${binding.restaurantName}*
+━━━━━━━━━━━━━━━━━━━━
+🏠 *Restaurante:* ${binding.restaurantName} (✅ *Oficial*)
+👤 *Hostelero:* ${username} (ID: \`${chatId}\`)
+📸 *Categoría:* Foto de Plato
+💬 *Pie de foto:*
+_${caption || '[Sin texto]'}_
+
+🤖 *Detalles de la Foto:*
+${summary.trim()}
+━━━━━━━━━━━━━━━━━━━━
+☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;
+
+          const keyboard = {
+            inline_keyboard: [
+              [
+                { text: '✅ Aprobar y Publicar Foto', callback_data: `app_${ticketId}` },
+                { text: '❌ Rechazar Solicitud', callback_data: `rej_${ticketId}` },
+              ],
+            ],
+          };
+
+          await sendMessage(ADMIN_CHAT_ID, adminNotificationText, keyboard);
+          return NextResponse.json({ ok: true, status: 'photo_ticket_created', photoUrl, ticketId, dish: matchedDishName });
+        } else if (photoUrl) {
+          await sendMessage(
+            chatId,
+            `📸 *¡Foto recibida y optimizada correctamente en la nube!*\n\n¿A qué plato de tu carta deseas asignarla? Responde escribiendo el nombre del plato (ej: _"Foto para Chuletón de Vaca"_).`
+          );
+          return NextResponse.json({ ok: true, status: 'photo_uploaded_awaiting_dish', photoUrl });
+        }
+      }
+
+      // Si el mensaje es un comando explícito o una petición clara, no atrapar en un wizard previo
+      const isExplicitNewCommand = 
+        text.startsWith('/') ||
+        detectAddDishWithoutPrice(text) !== null ||
+        parseDailyMenu(text) !== null ||
+        /^(?:sube|subir|baja|bajar|cambia|cambiar|poner|pon|marcar|quitar|cerrar|abrir|cerramos|abrimos|reabrimos)\b/i.test(text) ||
+        /^(?:¿\s*)?(?:cu[aá]l\s+es|cu[aá]nto\s+vale|a\s+cu[aá]nto|horario|visitas|m[eé]tricas)/i.test(text);
+
+      if (isExplicitNewCommand) {
+        await clearPendingDishWizard(chatId);
+      }
+
       // 1. GESTIÓN DE WIZARD ACTIVO (El hostelero está respondiendo precio, sección, descripción o alérgenos de un nuevo plato)
-      const pendingWizard = await getPendingDishWizard(chatId);
+      const pendingWizard = isExplicitNewCommand ? null : await getPendingDishWizard(chatId);
       if (pendingWizard) {
         if (pendingWizard.step === 'awaiting_price') {
           // Extraer precio del mensaje
@@ -1574,6 +1919,81 @@ ${summary.trim()}
           `✨ *¡Nuevo plato detectado!*\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Plato:* *${addWithoutPriceDish}*\n\n💰 *Por favor, indica el precio* que tendrá en la carta (ej: _14.50€_ o simplemente _14.50_):`
         );
         return NextResponse.json({ ok: true, status: 'awaiting_dish_price' });
+      }
+
+      // Menú del Día: Detección y creación de Ticket de Menú Diario
+      const dailyMenu = parseDailyMenu(text);
+      if (dailyMenu && !text.startsWith('/menudeldia') && !/(?:cu[aá]l\s+es|qu[eé]\s+hay|qu[eé]\s+tenemos|consultar|ver)/i.test(text)) {
+        const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
+        const summary = 
+`• 🍴 *Tipo:* Menú del Día Diario
+• 💰 *Precio:* ${dailyMenu.price.toFixed(2)} €
+• 🥗 *Primeros:* ${dailyMenu.primeros.join(', ')}
+• 🥩 *Segundos:* ${dailyMenu.segundos.join(', ')}
+• 🍮 *Postres:* ${dailyMenu.postres.join(', ')}
+• 🍷 *Incluye:* ${dailyMenu.includes}`;
+
+        await sendMessage(
+          chatId,
+          `🍴 *¡Menú del día recibido y formateado!* (#${ticketId})\n\n💰 *Precio:* ${dailyMenu.price.toFixed(2)} €\n🥗 *Primeros:* ${dailyMenu.primeros.join(', ')}\n🥩 *Segundos:* ${dailyMenu.segundos.join(', ')}\n🍮 *Postres:* ${dailyMenu.postres.join(', ')}\n🍷 *Incluye:* ${dailyMenu.includes}\n\n⏳ Solicitud enviada al Superadmin para publicar en vivo en tu carta digital.`
+        );
+
+        const adminNotificationText = 
+`🎫 *TICKET CLOUD #${ticketId} — ${binding.restaurantName}*
+━━━━━━━━━━━━━━━━━━━━
+🏠 *Restaurante:* ${binding.restaurantName} (✅ *Oficial*)
+👤 *Hostelero:* ${username} (ID: \`${chatId}\`)
+🍴 *Categoría:* Menú del Día Diario
+💬 *Mensaje:*
+_${text}_
+
+🤖 *Estructura del Menú:*
+${summary.trim()}
+━━━━━━━━━━━━━━━━━━━━
+☁️ *Servidor:* Vercel Serverless (0€ / 24h)`;
+
+        const keyboard = {
+          inline_keyboard: [
+            [
+              { text: '✅ Aprobar y Publicar Menú', callback_data: `app_${ticketId}` },
+              { text: '❌ Rechazar Solicitud', callback_data: `rej_${ticketId}` },
+            ],
+          ],
+        };
+
+        await sendMessage(ADMIN_CHAT_ID, adminNotificationText, keyboard);
+        return NextResponse.json({ ok: true, status: 'daily_menu_ticket_created', ticketId, dailyMenu });
+      }
+
+      // Consulta de Menú del Día (/menudeldia, "¿cuál es el menú del día?", "¿cuál es el menú de hoy?")
+      if (text.startsWith('/menudeldia') || /^(?:¿\s*)?(?:cu[aá]l\s+es\s+el\s+men[úu](?:\s+(?:de\s+hoy|del\s+d[ií]a))?|qu[eé]\s+hay\s+de\s+men[úu]|men[úu]\s+(?:del\s+d[ií]a|de\s+hoy|diario)|men[úu])(?:\s+[a-záéíóúñ\s]+)?(?:\s*\?)?$/i.test(text)) {
+        try {
+          const restRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=name,opening_hours`, {
+            headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+          });
+          if (restRes.ok) {
+            const rData = await restRes.json();
+            const dm = rData?.[0]?.opening_hours?.daily_menu;
+            if (dm && dm.primeros && dm.primeros.length > 0) {
+              let dmText = `🍴 *MENÚ DEL DÍA — ${binding.restaurantName.toUpperCase()}*\n━━━━━━━━━━━━━━━━━━━━\n💶 *Precio:* *${Number(dm.price).toFixed(2)} €*\n\n`;
+              dmText += `🥗 *Primeros:* ${Array.isArray(dm.primeros) ? dm.primeros.join(', ') : dm.primeros}\n`;
+              dmText += `🥩 *Segundos:* ${Array.isArray(dm.segundos) ? dm.segundos.join(', ') : dm.segundos}\n`;
+              dmText += `🍮 *Postres:* ${Array.isArray(dm.postres) ? dm.postres.join(', ') : dm.postres}\n`;
+              dmText += `🍷 *Incluye:* ${dm.includes || 'Pan, bebida y postre'}\n`;
+              dmText += `\n💡 _Para actualizarlo, escribe: "Menú de hoy: primeros ..., segundos ..., postre ..., 14.50€"_`;
+              await sendMessage(chatId, dmText);
+              return NextResponse.json({ ok: true, query: 'daily_menu', daily_menu: dm });
+            } else {
+              await sendMessage(
+                chatId,
+                `🍴 *Menú del Día de ${binding.restaurantName}:*\n\nActualmente no hay ningún menú del día cargado para hoy.\n\n💡 *Para publicarlo:* Escribe _"Menú de hoy: primeros sopa y ensalada, segundos entrecot y salmón, postre tarta, 14.50€"_`
+              );
+              return NextResponse.json({ ok: true, query: 'daily_menu_empty' });
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching daily menu:', e);
+        }
       }
 
       // Comando /carta: Listar carta actual para el hostelero
@@ -1726,6 +2146,33 @@ ${summary.trim()}
       const ticketId = `TCK-${Math.floor(1000 + Math.random() * 9000)}`;
       const ticketType = classifyTicketType(text);
       const detected = extractChangesFromMessage(text);
+
+      // Desambiguación Interactiva para Platos Similares (Fuzzy Disambiguation)
+      if (detected.length === 1 && !/añad|crea|agreg|meter|incluy|nuevo\s+plato/i.test(text)) {
+        const singleItem = detected[0];
+        const matches = await findAllMatchingDishes(restaurantUuid, singleItem.dishName);
+        if (matches.length >= 2) {
+          const exact = matches.find(m => m.name.toLowerCase().trim() === singleItem.dishName.toLowerCase().trim());
+          if (!exact) {
+            const actionType = singleItem.updates.price !== undefined ? 'p' : (singleItem.updates.isAvailable === false ? 'out' : 'in');
+            const paramVal = singleItem.updates.price !== undefined ? singleItem.updates.price : '';
+            
+            const buttons = matches.slice(0, 4).map(m => [
+              {
+                text: `🍽️ ${m.name} (${Number(m.price).toFixed(2)} €)`,
+                callback_data: `amb_${m.id}_${actionType}_${paramVal}`,
+              }
+            ]);
+
+            await sendMessage(
+              chatId,
+              `🔍 *Hemos encontrado varios platos similares a "${singleItem.dishName}":*\n\n¿A cuál de ellos te refieres? Toca una opción:`,
+              { inline_keyboard: buttons }
+            );
+            return NextResponse.json({ ok: true, status: 'disambiguation_prompt_sent', matches: matches.map(m => m.name) });
+          }
+        }
+      }
 
       // 2. DETECCIÓN PROACTIVA DE NUEVO PLATO NO EXISTENTE EN CARTA
       // Si el hostelero pide añadir un plato que NO está en su menú, comprobar sección, descripción y alérgenos

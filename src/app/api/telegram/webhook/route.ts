@@ -886,7 +886,7 @@ function classifyTicketType(text: string): { type: string; emoji: string; label:
   const lower = text.toLowerCase();
   
   // Temporary closure / Cartel cerrado
-  if (/cartel.*cerrad|cerrad[oa]s?|cerrar|cerramos|cierre|vacaciones|descanso|cerrar hoy|estamos cerrad|bajar la persiana|no abrimos|hoy no abrimos|cerrar el local|cerrar el restaurante/i.test(lower)) {
+  if (/cartel.*cerrad|cerrad[oa]s?|cerrar|cerramos|cierre|vacaciones|descanso|cerrar hoy|estamos cerrad|bajar.*persiana|bajamos.*persiana|no abrimos|hoy no abrimos|cerrar el local|cerrar el restaurante/i.test(lower)) {
     return { type: 'CLOSURE', emoji: '🚨', label: 'Cierre Temporal / Cartel Cerrado' };
   }
   // Reopening / Cartel abierto
@@ -1071,21 +1071,23 @@ export async function POST(req: NextRequest) {
         // Extraer y aplicar cambios de información del restaurante (Teléfono, WhatsApp, Eslogan, Aforo, Horario)
         const restUpdates: Record<string, any> = {};
 
-        const phoneMatch = messageText.match(/(?:tel[ée]fono|tlf|contacto|reservas)[\s:]*([+\d\s]{9,15})/i);
+        const phoneMatch = messageText.match(/(?:tel[ée]fono|tlf|contacto|reservas)[^0-9+]*?([+\d\s]{9,15})/i);
         if (phoneMatch) {
           restUpdates.phone = phoneMatch[1].replace(/\s+/g, ' ').trim();
         }
-        const whatsappMatch = messageText.match(/(?:whatsapp|wasap|wsp)[\s:]*([+\d\s]{9,15})/i);
+        const whatsappMatch = messageText.match(/(?:whatsapp|wasap|wsp)[^0-9+]*?([+\d\s]{9,15})/i);
         if (whatsappMatch) {
           restUpdates.whatsapp = whatsappMatch[1].replace(/\s+/g, ' ').trim();
         }
 
         const taglineMatch = messageText.match(/(?:eslogan|tagline|lema|subt[ií]tulo)[\s:]*["“]?([^"\n\r]{5,100})["”]?/i);
         if (taglineMatch) {
-          restUpdates.tagline = taglineMatch[1].trim();
+          let tag = taglineMatch[1].trim();
+          tag = tag.replace(/^(?:a|en)\b\s*[:\-]?\s*/i, '').trim();
+          restUpdates.tagline = tag;
         }
 
-        const aforoMatch = messageText.match(/(?:aforo|capacidad|plazas|comensales)[\s:]*(\d+)/i);
+        const aforoMatch = messageText.match(/(?:aforo|capacidad|plazas|comensales)[^0-9]*?(\d+)/i);
         if (aforoMatch) {
           restUpdates.capacity = parseInt(aforoMatch[1], 10);
         }
@@ -1543,7 +1545,7 @@ ${summary.trim()}
       }
 
       // Comando /carta: Listar carta actual para el hostelero
-      if (text.startsWith('/carta')) {
+      if (text.startsWith('/carta') || text.toLowerCase() === 'carta' || text.toLowerCase() === 'ver carta') {
         try {
           const queryUrl = `${SUPABASE_URL}/rest/v1/dishes?restaurant_id=eq.${restaurantUuid}&select=name,price,is_available&order=name.asc`;
           const res = await fetch(queryUrl, {
@@ -1563,10 +1565,129 @@ ${summary.trim()}
             cartaText += `💡 _Para cambiar cualquier precio, solo escribe: "Poner [Plato] a [Precio]€"_`;
             
             await sendMessage(chatId, cartaText);
-            return NextResponse.json({ ok: true });
+            return NextResponse.json({ ok: true, query: 'carta' });
           }
         } catch (e) {
           console.warn('Error fetching dishes for /carta:', e);
+        }
+      }
+
+      // Consultas de Precio (ej: "¿Cuánto vale el chuletón?", "¿A cuánto está la tarta?")
+      const priceQueryMatch = text.match(/^(?:¿\s*)?(?:a\s+cu[aá]nto\s+(?:est[aá]|tenemos|vale|sale)|cu[aá]nto\s+(?:vale|cuesta|sale|est[aá]|tenemos)|precio\s+(?:de\s+|del\s+|de\s+la\s+)?|qu[eé]\s+precio\s+tiene)\s+([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-&]+?)(?:\s*\?)?$/i);
+      if (priceQueryMatch && !/\d+[\.,]?\d*\s*(?:€|euros?|EUR)/i.test(text)) {
+        const dishSearch = cleanDishName(priceQueryMatch[1]);
+        if (dishSearch) {
+          const found = await findExistingDish(restaurantUuid, dishSearch);
+          if (found) {
+            const statusLabel = found.is_available !== false ? '✅ Disponible' : '🚫 Agotado temporalmente';
+            await sendMessage(
+              chatId,
+              `💰 *Precio Actual en tu Carta Digital:*\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Plato:* *${found.name}*\n💶 *Precio:* *${Number(found.price).toFixed(2)} €*\n📊 *Estado:* ${statusLabel}\n\n💡 _Para cambiarlo, solo escribe: "Poner ${found.name} a [nuevo precio]€"_`
+            );
+            return NextResponse.json({ ok: true, query: 'dish_price', dish: found.name, price: found.price });
+          } else {
+            await sendMessage(
+              chatId,
+              `🔍 No he encontrado ningún plato llamado *"${dishSearch}"* en la carta de *${binding.restaurantName}*.\n\nEscribe \`/carta\` para ver todos tus platos disponibles o _"Añadir ${dishSearch} a [precio]€"_ para crearlo.`
+            );
+            return NextResponse.json({ ok: true, query: 'dish_not_found' });
+          }
+        }
+      }
+
+      // Consultas de Horario (ej: "¿A qué hora cerramos hoy?", "¿Cuál es nuestro horario?", "horario")
+      if (/^(?:¿\s*)?(?:a\s+qu[eé]\s+hora\s+(?:abrimos|cerramos|abre|cierra)|cu[aá]l\s+es\s+nuestro\s+horario|qu[eé]\s+horario\s+tenemos|horarios?|a\s+qu[eé]\s+hora\s+cerramos\s+hoy)(?:\s*\?)?$/i.test(text)) {
+        try {
+          const restRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=name,opening_hours`, {
+            headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+          });
+          if (restRes.ok) {
+            const rData = await restRes.json();
+            const rest = rData?.[0];
+            const hours = rest?.opening_hours || {};
+            const isClosed = hours?.isTemporarilyClosed;
+            const statusSign = isClosed ? '🚨 *CERRADO TEMPORALMENTE*' : '🟢 *ABIERTO AL PÚBLICO*';
+            
+            let hoursText = `🕐 *HORARIOS Y ESTADO DEL LOCAL:*\n━━━━━━━━━━━━━━━━━━━━\n🏠 *Restaurante:* *${binding.restaurantName}*\nCartel web: ${statusSign}\n\n`;
+            if (hours && typeof hours === 'object' && !Array.isArray(hours)) {
+              for (const [day, h] of Object.entries(hours)) {
+                if (day !== 'isTemporarilyClosed' && day !== 'closedReason') {
+                  const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                  hoursText += `• *${dayName}:* ${h}\n`;
+                }
+              }
+            } else {
+              hoursText += `• *Servicio:* Mar-Dom: 13:00 - 16:30 | 20:30 - 23:30 (Lunes cerrado)\n`;
+            }
+            hoursText += `\n💡 _Para cambiar el horario, escribe: "Nuevo horario: Mar a Dom de 13:00 a 16:30"_`;
+            await sendMessage(chatId, hoursText);
+            return NextResponse.json({ ok: true, query: 'schedule' });
+          }
+        } catch (e) {
+          console.warn('Error fetching schedule:', e);
+        }
+      }
+
+      // Consultas de Contacto (ej: "¿Qué teléfono tenemos puesto?", "nuestro whatsapp", "contacto")
+      const normContactText = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (/(?:telefono|whatsapp|contacto).*tenemos|tenemos.*(?:telefono|whatsapp|contacto)|datos\s+del\s+local|^contacto$/i.test(normContactText)) {
+        try {
+          const restRes = await fetch(`${SUPABASE_URL}/rest/v1/restaurants?id=eq.${restaurantUuid}&select=name,phone,whatsapp,address,tagline`, {
+            headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+          });
+          if (restRes.ok) {
+            const rData = await restRes.json();
+            const rest = rData?.[0];
+            let contactText = `📞 *INFORMACIÓN DE CONTACTO DE ${binding.restaurantName.toUpperCase()}:*\n━━━━━━━━━━━━━━━━━━━━\n`;
+            contactText += `• 📞 *Teléfono:* ${rest?.phone || 'No configurado'}\n`;
+            contactText += `• 💬 *WhatsApp:* ${rest?.whatsapp || 'No configurado'}\n`;
+            contactText += `• 📍 *Dirección:* ${rest?.address || 'Torrelodones, Madrid'}\n`;
+            if (rest?.tagline) contactText += `• 📝 *Eslogan:* _"${rest.tagline}"_\n`;
+            contactText += `\n💡 _Para actualizar cualquier dato, escribe: "Nuevo teléfono: 918 59 00 00"_`;
+            await sendMessage(chatId, contactText);
+            return NextResponse.json({ ok: true, query: 'contact_info' });
+          }
+        } catch (e) {
+          console.warn('Error fetching contact info:', e);
+        }
+      }
+
+      // Consultas de Métricas para el Hostelero (/metricas, /stats, "métricas", "¿cuántas visitas llevamos?")
+      if (text.startsWith('/metricas') || text.startsWith('/stats') || /visitas|m[eé]tricas|estad[ií]sticas/i.test(text)) {
+        try {
+          const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/analytics_events?restaurant_id=eq.${restaurantUuid}&select=event_type,created_at&limit=300`, {
+            headers: { 'apikey': SUPABASE_SECRET_KEY, 'Authorization': `Bearer ${SUPABASE_SECRET_KEY}` },
+          });
+          let qrScans = 0;
+          let webViews = 0;
+          let whatsappClicks = 0;
+          let callClicks = 0;
+          let mapsClicks = 0;
+
+          if (eventsRes.ok) {
+            const evs = await eventsRes.json();
+            for (const ev of evs) {
+              if (ev.event_type === 'qr_scan') qrScans++;
+              else if (ev.event_type === 'page_view') webViews++;
+              else if (ev.event_type === 'whatsapp_click') whatsappClicks++;
+              else if (ev.event_type === 'call_click') callClicks++;
+              else if (ev.event_type === 'map_click') mapsClicks++;
+            }
+          }
+
+          const totalVisits = qrScans + webViews;
+          let statsText = `📊 *MÉTRICAS EN VIVO DE ${binding.restaurantName.toUpperCase()}:*\n━━━━━━━━━━━━━━━━━━━━\n`;
+          statsText += `• 📲 *Escaneos de QR en Mesa:* *${qrScans}*\n`;
+          statsText += `• 🌐 *Visitas Web a la Carta:* *${webViews}*\n`;
+          statsText += `• 💬 *Clics a tu WhatsApp:* *${whatsappClicks}*\n`;
+          statsText += `• 📞 *Clics a Llamada de Reserva:* *${callClicks}*\n`;
+          statsText += `• 🗺️ *Clics a "Cómo Llegar":* *${mapsClicks}*\n`;
+          statsText += `\n⚡ _Datos sincronizados en tiempo real con Supabase Cloud._\n🔗 *Ver panel completo:* https://gastrotorre.vercel.app/admin`;
+          
+          await sendMessage(chatId, statsText);
+          return NextResponse.json({ ok: true, query: 'metrics', totalVisits });
+        } catch (e) {
+          console.warn('Error fetching metrics for hostelero:', e);
         }
       }
 

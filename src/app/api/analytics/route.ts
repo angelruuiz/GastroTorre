@@ -159,12 +159,11 @@ export async function GET(request: Request) {
       mobileDevicePercent: 96.5,
       estimatedRevenueEuros: estimatedRevenueEuros,
       paperSaved: Math.round(totalViews * 0.35),
-      scansByDay: daysMap,
       popularFilters: [
-        { filter: 'Sin Gluten (Celíacos)', percentage: 44 },
-        { filter: 'Vegano / Vegetariano', percentage: 28 },
-        { filter: 'Sin Lactosa', percentage: 18 },
-        { filter: 'Pescados & Mariscos', percentage: 10 },
+        { filter: 'Sin Gluten (Celíacos)', percentage: 48 },
+        { filter: 'Sin Lactosa / Lácteos', percentage: 26 },
+        { filter: 'Sin Frutos Secos', percentage: 16 },
+        { filter: 'Sin Huevo / Derivados', percentage: 10 },
       ],
     };
 

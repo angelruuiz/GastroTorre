@@ -600,21 +600,9 @@ export default function RestaurantDetailPage() {
                             </span>
                           )}
 
-                          {dish.isVegan && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
-                              🌱 Vegano 100%
-                            </span>
-                          )}
-
                           {dish.isGlutenFree && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
                               ✅ Apto Celíacos (Sin Gluten)
-                            </span>
-                          )}
-
-                          {dish.isVegetarian && !dish.isVegan && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950/70 text-teal-950 dark:text-teal-200 text-[10px] font-bold border border-teal-300 dark:border-teal-800">
-                              🥗 Vegetariano
                             </span>
                           )}
                         </div>

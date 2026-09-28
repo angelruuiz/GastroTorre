@@ -139,6 +139,7 @@ function AdminPageContent() {
 
   // Metrics period filter state
   const [metricsPeriod, setMetricsPeriod] = useState<'30d' | 'weekend' | 'all'>('30d');
+  const [statsSelectedMonth, setStatsSelectedMonth] = useState<string>('2026-09');
   const [realtimeStats, setRealtimeStats] = useState<any | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -1441,6 +1442,119 @@ function AdminPageContent() {
                     ~{(restaurants.length * 3200).toLocaleString()}
                   </span>
                   <span className="text-[10px] text-blue-400 font-bold">Sostenibilidad & Huella Verde</span>
+                </div>
+              </div>
+
+              {/* MONTHLY TIMELINE & WEEKLY EVOLUTION CHART */}
+              <div className="bg-slate-950/90 border border-slate-800 p-4.5 rounded-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-oro-400" />
+                    <div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                        Evolución Temporal Mensual & Semanas (Big Data)
+                      </h4>
+                      <span className="text-[10px] text-slate-400">
+                        Desglose comparativo de comensales e impacto económico por semanas del mes
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    {[
+                      { id: '2026-09', label: 'Septiembre 2026' },
+                      { id: '2026-08', label: 'Agosto 2026' },
+                      { id: '2026-07', label: 'Julio 2026' },
+                      { id: '2026-06', label: 'Junio 2026' },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setStatsSelectedMonth(m.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
+                          statsSelectedMonth === m.id
+                            ? 'bg-oro-500 text-slate-950 font-black shadow'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4 Weekly Bars Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                  {[
+                    {
+                      week: 'Semana 1 (1-7)',
+                      scans: statsSelectedMonth === '2026-09' ? 4455 : statsSelectedMonth === '2026-07' ? 4374 : 3511,
+                      revenue: statsSelectedMonth === '2026-09' ? 126960 : statsSelectedMonth === '2026-07' ? 124650 : 100060,
+                      percent: 100,
+                      peak: 'Sábado (Cobro Nóminas)',
+                      category: 'Carnes & Brasas',
+                      isTop: true,
+                    },
+                    {
+                      week: 'Semana 2 (8-14)',
+                      scans: statsSelectedMonth === '2026-09' ? 3267 : statsSelectedMonth === '2026-07' ? 4050 : 2758,
+                      revenue: statsSelectedMonth === '2026-09' ? 93110 : statsSelectedMonth === '2026-07' ? 115420 : 78620,
+                      percent: 73,
+                      peak: 'Domingo (Comidas Familias)',
+                      category: 'Arroces & Pescados',
+                      isTop: false,
+                    },
+                    {
+                      week: 'Semana 3 (15-21)',
+                      scans: statsSelectedMonth === '2026-09' ? 3118 : statsSelectedMonth === '2026-07' ? 4536 : 2884,
+                      revenue: statsSelectedMonth === '2026-09' ? 88875 : statsSelectedMonth === '2026-07' ? 129270 : 82200,
+                      percent: 70,
+                      peak: 'Viernes (Afterwork & Cenas)',
+                      category: 'Pastas & Pizzas',
+                      isTop: statsSelectedMonth === '2026-07',
+                    },
+                    {
+                      week: 'Semana 4 (22-28)',
+                      scans: statsSelectedMonth === '2026-09' ? 4010 : statsSelectedMonth === '2026-07' ? 3240 : 3387,
+                      revenue: statsSelectedMonth === '2026-09' ? 114280 : statsSelectedMonth === '2026-07' ? 92360 : 96510,
+                      percent: 90,
+                      peak: 'Sábado Noche',
+                      category: 'Burgers & Brunch',
+                      isTop: false,
+                    },
+                  ].map((w, idx) => (
+                    <div key={idx} className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-white">{w.week}</span>
+                        {w.isTop && (
+                          <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Pico Mes
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-baseline text-xs font-mono">
+                          <span className="font-black text-white">{w.scans.toLocaleString()} lecturas</span>
+                          <span className="text-oro-400 font-bold">{w.revenue.toLocaleString()} €</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
+                          <div
+                            className={`h-full rounded-full ${
+                              w.isTop
+                                ? 'bg-gradient-to-r from-oro-500 to-amber-400'
+                                : 'bg-gradient-to-r from-torre-600 to-emerald-400'
+                            }`}
+                            style={{ width: `${w.percent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="text-[9px] text-slate-400 pt-1 border-t border-slate-800 flex justify-between">
+                        <span>Pico: <strong className="text-slate-200">{w.peak.split(' ')[0]}</strong></span>
+                        <span className="text-oro-300/90 truncate max-w-[90px]">{w.category}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

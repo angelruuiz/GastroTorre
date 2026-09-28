@@ -34,4 +34,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
+# local automation and tests scripts
+src/scripts/

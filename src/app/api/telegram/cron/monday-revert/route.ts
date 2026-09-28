@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '[REDACTED_TELEGRAM_BOT_TOKEN]';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vhqridneswcapjsuicfn.supabase.co';
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-  process.env.SUPABASE_SECRET_KEY || 
-  Buffer.from('c2Jfc2VjcmV0X0NLeF9wYVIzUlN4V1ZLRnY5TFR0ZkFfOG9BZXltdV8=', 'base64').toString('utf8');
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
 
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup: any = null) {
   try {

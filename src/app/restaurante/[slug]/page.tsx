@@ -24,9 +24,12 @@ import {
   Users 
 } from 'lucide-react';
 import { AllergenBadge } from '@/components/AllergenBadge';
-import { GoogleReviewsBooster } from '@/components/GoogleReviewsBooster';
+import { RatingHeader } from '@/components/RatingHeader';
+import { RatingFooter } from '@/components/RatingFooter';
+import { ReviewGateModal } from '@/components/ReviewGateModal';
+import { DishDetailModal } from '@/components/DishDetailModal';
 import { getOpenStatus } from '@/utils/schedule';
-import { INITIAL_RESTAURANTS } from '@/data/restaurants';
+import { INITIAL_RESTAURANTS, Dish } from '@/data/restaurants';
 import { OFFICIAL_ALLERGENS, DIET_FILTERS } from '@/data/allergens';
 import { dbService } from '@/lib/database/dbService';
 
@@ -49,22 +52,83 @@ export default function RestaurantDetailPage() {
   const [selectedDietFilter, setSelectedDietFilter] = useState<string | null>(null);
   const [showAllergensGuide, setShowAllergensGuide] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedDishForModal, setSelectedDishForModal] = useState<{ dish: Dish; categoryName: string } | null>(null);
+  const [modalInitialScore, setModalInitialScore] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Live reputation state
+  const [liveRating, setLiveRating] = useState<number>(restaurant?.rating || 4.8);
+  const [liveReviewsCount, setLiveReviewsCount] = useState<number>(restaurant?.reviewCount || 420);
+
+  const handleDishClick = (dish: Dish, categoryName: string) => {
+    setSelectedDishForModal({ dish, categoryName });
+    if (restaurant?.id || restaurant?.slug) {
+      dbService.trackEvent(restaurant.id || restaurant.slug, 'dish_view', dish.id);
+      fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id || restaurant.slug,
+          event_type: 'DISH_VIEW',
+          event_value: `DISH_VIEW:${dish.name}`,
+          dish_id: dish.id,
+          dish_name: dish.name,
+          category_name: categoryName
+        })
+      }).catch(() => {});
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
     if (restaurant?.id || restaurant?.slug) {
       dbService.trackEvent(restaurant.id || restaurant.slug, isTableQr ? 'qr_scan' : 'page_view');
+      fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id || restaurant.slug,
+          event_type: isTableQr ? 'QR_SCAN' : 'PAGE_VIEW',
+          event_value: isTableQr ? 'TABLE_QR' : 'WEB_DIRECT'
+        })
+      }).catch(() => {});
     }
   }, [restaurant?.id, restaurant?.slug, isTableQr]);
 
-  // Default active category
+  // Default active category and fetch live reputation from Supabase
   useEffect(() => {
     if (restaurant && restaurant.menu.length > 0 && !activeCategory) {
       setActiveCategory(restaurant.menu[0].id);
     }
-  }, [restaurant, activeCategory]);
+    if (restaurant) {
+      setLiveRating(restaurant.rating || 4.8);
+      setLiveReviewsCount(restaurant.reviewCount || 420);
+    }
+
+    // Live sync with Supabase database
+    async function syncLiveReputation() {
+      if (!slug) return;
+      try {
+        const res = await fetch('/api/restaurants');
+        if (res.ok) {
+          const json = await res.json();
+          const list = json.data || [];
+          const current = list.find((r: any) => r.slug === slug);
+          if (current) {
+            if (typeof current.rating === 'number') setLiveRating(current.rating);
+            if (typeof current.reviews_count === 'number') setLiveReviewsCount(current.reviews_count);
+            else if (typeof current.reviewCount === 'number') setLiveReviewsCount(current.reviewCount);
+          }
+        }
+      } catch (e) {
+        // graceful fallback
+      }
+    }
+
+    syncLiveReputation();
+  }, [restaurant, activeCategory, slug]);
 
   if (!restaurant) {
     return (
@@ -100,6 +164,37 @@ export default function RestaurantDetailPage() {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     }
+  };
+
+  // Radar de Alérgenos: Interceptar filtro y emitir telemetría Big Data
+  const handleFilterChange = (filterId: string | null) => {
+    setSelectedDietFilter(filterId);
+    if (filterId && (restaurant?.id || restaurant?.slug)) {
+      const restId = restaurant.id || restaurant.slug;
+      fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurant_id: restId,
+          event_type: 'FILTER_ALLERGEN',
+          event_value: filterId.toUpperCase()
+        })
+      }).catch(() => {});
+    }
+  };
+
+  // Handle dynamic rating update
+  const handleRatingSubmitted = (newScore: number) => {
+    const updatedCount = liveReviewsCount + 1;
+    const updatedRating = parseFloat(((liveRating * liveReviewsCount + newScore) / updatedCount).toFixed(2));
+    setLiveRating(updatedRating);
+    setLiveReviewsCount(updatedCount);
+  };
+
+  // Open smart review modal
+  const handleOpenReviewGate = (score: number) => {
+    setModalInitialScore(score);
+    setShowReviewModal(true);
   };
 
   // Count total and matching dishes
@@ -148,7 +243,7 @@ export default function RestaurantDetailPage() {
   };
 
   return (
-    <div className="space-y-4 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="space-y-4 bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 transition-colors pb-12">
       {/* Schema.org Structured Data */}
       <script
         type="application/ld+json"
@@ -231,9 +326,9 @@ export default function RestaurantDetailPage() {
             <div className="flex items-center gap-2 text-xs text-slate-200 flex-wrap">
               <span className="flex items-center gap-1 font-bold text-oro-400">
                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                {restaurant.rating}
+                {liveRating.toFixed(1)}
               </span>
-              <span>({restaurant.reviewCount} opiniones)</span>
+              <span>({liveReviewsCount} opiniones)</span>
               
               {restaurant.capacity && (
                 <>
@@ -261,74 +356,90 @@ export default function RestaurantDetailPage() {
         )}
 
         {/* Quick Contact & Action Buttons Bar */}
-        {Boolean(
-          (restaurant.phone && restaurant.phone.trim().length > 0) ||
-          (restaurant.whatsapp && restaurant.whatsapp.trim().length > 0) ||
-          (restaurant.googleMapsUrl && restaurant.googleMapsUrl.trim().length > 0)
-        ) && (
-          <div className="px-4 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-            {restaurant.description && (
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {restaurant.description}
-              </p>
-            )}
+        <div className="px-4 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+          {/* Rating Header Bar */}
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-1">
+            <RatingHeader
+              rating={liveRating}
+              reviewsCount={liveReviewsCount}
+              isVerified={restaurant.isVerified ?? true}
+              googleMapsUrl={restaurant.googleMapsUrl}
+              onOpenReviews={() => setShowReviewModal(true)}
+            />
+          </div>
 
-            {(() => {
-              const hasPhone = Boolean(restaurant.phone && restaurant.phone.trim().length > 0);
-              const hasWhatsapp = Boolean(restaurant.whatsapp && restaurant.whatsapp.trim().length > 0);
-              const hasGps = Boolean(restaurant.googleMapsUrl && restaurant.googleMapsUrl.trim().length > 0);
-              const totalActions = [hasPhone, hasWhatsapp, hasGps].filter(Boolean).length;
+          {restaurant.description && (
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              {restaurant.description}
+            </p>
+          )}
 
-              if (totalActions === 0) return null;
+          {(() => {
+            const hasPhone = Boolean(restaurant.phone && restaurant.phone.trim().length > 0);
+            const hasWhatsapp = Boolean(restaurant.whatsapp && restaurant.whatsapp.trim().length > 0);
+            const hasGps = Boolean(restaurant.googleMapsUrl && restaurant.googleMapsUrl.trim().length > 0);
+            const totalActions = [hasPhone, hasWhatsapp, hasGps].filter(Boolean).length;
 
-              const gridColsClass = 
-                totalActions === 3 ? 'grid-cols-3' :
-                totalActions === 2 ? 'grid-cols-2' : 'grid-cols-1';
+            if (totalActions === 0) return null;
 
-              return (
-                <div className={`grid ${gridColsClass} gap-2 pt-1`}>
-                  {/* Phone */}
-                  {hasPhone && (
-                    <a
-                      href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
-                      onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'call_click')}
-                      className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-center transition-all active:scale-95 shadow-sm"
-                    >
-                      <Phone className="w-4 h-4 text-slate-700 dark:text-slate-300 mb-1" />
-                      <span className="text-[11px] font-bold">Llamar</span>
-                    </a>
-                  )}
+            const gridColsClass = 
+              totalActions === 3 ? 'grid-cols-3' :
+              totalActions === 2 ? 'grid-cols-2' : 'grid-cols-1';
 
-                  {/* WhatsApp */}
-                  {hasWhatsapp && (
-                    <a
-                      href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20he%20visto%20vuestra%20carta%20en%20GastroTorre%20y%20quer%C3%ADa%20haceros%20una%20consulta%20sobre%20${encodeURIComponent(restaurant.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'whatsapp_click')}
-                      className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-center transition-all active:scale-95 shadow-sm"
-                    >
-                      <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-1" />
-                      <span className="text-[11px] font-bold">WhatsApp</span>
-                    </a>
-                  )}
+            return (
+              <div className={`grid ${gridColsClass} gap-2 pt-1`}>
+                {/* Phone */}
+                {hasPhone && (
+                  <a
+                    href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
+                    onClick={() => {
+                      dbService.trackEvent(restaurant.id || restaurant.slug, 'call_click');
+                      fetch('/api/analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          restaurant_id: restaurant.id || restaurant.slug,
+                          event_type: 'CLICK_CALL'
+                        })
+                      }).catch(() => {});
+                    }}
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-center transition-all active:scale-95 shadow-sm"
+                  >
+                    <Phone className="w-4 h-4 text-slate-700 dark:text-slate-300 mb-1" />
+                    <span className="text-[11px] font-bold">Llamar</span>
+                  </a>
+                )}
 
-                  {/* GPS */}
-                  {hasGps && (
-                    <a
-                      href={restaurant.googleMapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'directions_click')}
-                      className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-torre-50 dark:bg-torre-950/40 hover:bg-torre-100 dark:hover:bg-torre-900/40 text-torre-950 dark:text-torre-200 border border-torre-200 dark:border-torre-800 text-center transition-all active:scale-95 shadow-sm"
-                    >
-                      <Navigation className="w-4 h-4 text-torre-600 dark:text-torre-400 mb-1" />
-                      <span className="text-[11px] font-bold">Cómo llegar</span>
-                    </a>
-                  )}
-                </div>
-              );
-            })()}
+                {/* WhatsApp */}
+                {hasWhatsapp && (
+                  <a
+                    href={`https://wa.me/${restaurant.whatsapp.replace(/[^0-9]/g, '')}?text=Hola,%20he%20visto%20vuestra%20carta%20en%20GastroTorre%20y%20quer%C3%ADa%20haceros%20una%20consulta%20sobre%20${encodeURIComponent(restaurant.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'whatsapp_click')}
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-center transition-all active:scale-95 shadow-sm"
+                  >
+                    <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-1" />
+                    <span className="text-[11px] font-bold">WhatsApp</span>
+                  </a>
+                )}
+
+                {/* GPS */}
+                {hasGps && (
+                  <a
+                    href={restaurant.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'directions_click')}
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-torre-50 dark:bg-torre-950/40 hover:bg-torre-100 dark:hover:bg-torre-900/40 text-torre-950 dark:text-torre-200 border border-torre-200 dark:border-torre-800 text-center transition-all active:scale-95 shadow-sm"
+                  >
+                    <Navigation className="w-4 h-4 text-torre-600 dark:text-torre-400 mb-1" />
+                    <span className="text-[11px] font-bold">Cómo llegar</span>
+                  </a>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Schedule, Address & Capacity info */}
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 flex-wrap gap-2">
@@ -354,8 +465,7 @@ export default function RestaurantDetailPage() {
             </div>
           </div>
         </div>
-      )}
-    </div>
+      </div>
 
       {/* DAILY MENU (MENÚ DEL DÍA) SPECIAL SECTION */}
       {restaurant.dailyMenu && restaurant.dailyMenu.isActive && (
@@ -448,7 +558,7 @@ export default function RestaurantDetailPage() {
         </section>
       )}
 
-      {/* ADVANCED ALLERGEN & DIETARY FILTER BAR */}
+      {/* ADVANCED ALLERGEN & DIETARY FILTER BAR (RADAR DE ALÉRGENOS) */}
       <div className="px-4 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -468,7 +578,7 @@ export default function RestaurantDetailPage() {
         {/* Filter Chips Carousel */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
-            onClick={() => setSelectedDietFilter(null)}
+            onClick={() => handleFilterChange(null)}
             className={`px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 flex items-center gap-1.5 ${
               selectedDietFilter === null
                 ? 'bg-torre-600 text-white font-black border-2 border-torre-500 shadow-sm ring-2 ring-torre-400/40'
@@ -483,7 +593,7 @@ export default function RestaurantDetailPage() {
             return (
               <button
                 key={filter.id}
-                onClick={() => setSelectedDietFilter(isSelected ? null : filter.id)}
+                onClick={() => handleFilterChange(isSelected ? null : filter.id)}
                 className={`px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 flex items-center gap-1.5 ${
                   isSelected
                     ? 'bg-emerald-600 text-white font-black border-2 border-emerald-500 shadow-md shadow-emerald-600/20 ring-2 ring-emerald-400/50'
@@ -505,7 +615,7 @@ export default function RestaurantDetailPage() {
               <span>Mostrando <strong className="text-emerald-700 dark:text-emerald-300 font-black">{matchingDishesCount}</strong> platos aptos para <strong className="text-emerald-700 dark:text-emerald-300 font-black">{currentFilterObj?.name}</strong></span>
             </span>
             <button
-              onClick={() => setSelectedDietFilter(null)}
+              onClick={() => handleFilterChange(null)}
               className="text-xs font-black text-emerald-800 dark:text-emerald-200 hover:underline bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-lg shrink-0 border border-emerald-300 dark:border-emerald-700"
             >
               Quitar filtro ✕
@@ -542,7 +652,6 @@ export default function RestaurantDetailPage() {
       {/* Menu Categories and Dishes */}
       <div className="px-4 space-y-6 pt-1">
         {restaurant.menu.map((category) => {
-          // Filter dishes in category based on dietary check
           const dishes = category.dishes.filter((d) => {
             if (!currentFilterObj) return true;
             return currentFilterObj.check(d);
@@ -573,91 +682,112 @@ export default function RestaurantDetailPage() {
 
               {/* Dishes List */}
               <div className="space-y-3">
-                {dishes.map((dish) => (
-                  <div
-                    key={dish.id}
-                    className={`p-4 rounded-3xl border transition-all ${
-                      dish.isAvailable
-                        ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-soft hover:shadow-float hover:border-torre-200 dark:hover:border-torre-700'
-                        : 'bg-slate-100/70 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-60'
-                    }`}
-                  >
-                    <div className="flex gap-3.5">
-                      {/* Dish Details */}
-                      <div className="flex-1 min-w-0 space-y-1.5">
-                        {/* Specialty / Available / Diet Badges */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {dish.isSpecialty && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider border border-amber-300 dark:border-amber-800">
-                              <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                              Especialidad
-                            </span>
-                          )}
+                {dishes.map((dish) => {
+                  const dishPhoto = dish.image || (dish as any).photo_url;
+                  return (
+                    <div
+                      key={dish.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDishClick(dish, category.name);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleDishClick(dish, category.name);
+                        }
+                      }}
+                      className={`p-4 rounded-3xl border transition-all cursor-pointer group active:scale-[0.98] select-none ${
+                        dish.isAvailable
+                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-soft hover:shadow-float hover:border-torre-400 dark:hover:border-torre-500 hover:ring-2 hover:ring-torre-400/20'
+                          : 'bg-slate-100/70 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-60'
+                      }`}
+                    >
+                      <div className="flex gap-3.5">
+                        {/* Dish Details */}
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          {/* Specialty / Available / Diet Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {dish.isSpecialty && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider border border-amber-300 dark:border-amber-800">
+                                <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                Especialidad
+                              </span>
+                            )}
 
-                          {!dish.isAvailable && (
-                            <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/70 text-rose-950 dark:text-rose-200 text-[10px] font-black uppercase border border-rose-300 dark:border-rose-800">
-                              Agotado hoy
-                            </span>
-                          )}
+                            {!dish.isAvailable && (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/70 text-rose-950 dark:text-rose-200 text-[10px] font-black uppercase border border-rose-300 dark:border-rose-800">
+                                Agotado hoy
+                              </span>
+                            )}
 
-                          {dish.isGlutenFree && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
-                              ✅ Apto Celíacos (Sin Gluten)
-                            </span>
+                            {dish.isGlutenFree && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
+                                ✅ Apto Celíacos (Sin Gluten)
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Dish Name */}
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug group-hover:text-torre-600 dark:group-hover:text-torre-400 transition-colors flex items-center justify-between gap-2">
+                            <span>{dish.name}</span>
+                            <span className="text-[10px] text-slate-400 font-normal opacity-0 group-hover:opacity-100 transition-opacity">Ver detalle 🔍</span>
+                          </h4>
+
+                          {/* Description */}
+                          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            {dish.description}
+                          </p>
+
+                          {/* Allergens Row with Clear Labeling */}
+                          {dish.allergens && dish.allergens.length > 0 && (
+                            <div className="pt-1.5">
+                              <div className="flex flex-wrap items-center gap-1">
+                                {dish.allergens.map((alg, idx) => (
+                                  <AllergenBadge key={idx} type={alg} showText={true} prefix={true} />
+                                ))}
+                              </div>
+                            </div>
                           )}
                         </div>
 
-                        {/* Dish Name */}
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                          {dish.name}
-                        </h4>
+                        {/* Price and Thumbnail Image */}
+                        <div className="flex flex-col items-end justify-between shrink-0">
+                          <span className="text-base font-black text-torre-700 dark:text-torre-300 bg-torre-50 dark:bg-torre-950 px-2.5 py-1 rounded-xl border border-torre-100 dark:border-torre-800 shadow-sm">
+                            {dish.price.toFixed(2)}€
+                          </span>
 
-                        {/* Description */}
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                          {dish.description}
-                        </p>
-
-                        {/* Allergens Row with Clear Labeling */}
-                        {dish.allergens && dish.allergens.length > 0 && (
-                          <div className="pt-1.5">
-                            <div className="flex flex-wrap items-center gap-1">
-                              {dish.allergens.map((alg, idx) => (
-                                <AllergenBadge key={idx} type={alg} showText={true} prefix={true} />
-                              ))}
+                          {dishPhoto && (
+                            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mt-2 group-hover:scale-105 transition-transform">
+                              <img
+                                src={dishPhoto}
+                                alt={dish.name}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
                             </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Price and Thumbnail Image */}
-                      <div className="flex flex-col items-end justify-between shrink-0">
-                        <span className="text-base font-black text-torre-700 dark:text-torre-300 bg-torre-50 dark:bg-torre-950 px-2.5 py-1 rounded-xl border border-torre-100 dark:border-torre-800 shadow-sm">
-                          {dish.price.toFixed(2)}€
-                        </span>
-
-                        {dish.image && (
-                          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mt-2">
-                            <img
-                              src={dish.image}
-                              alt={dish.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           );
         })}
       </div>
 
-      {/* SMART GOOGLE REVIEWS BOOSTER */}
+      {/* RATING FOOTER (VALORACIÓN RÁPIDA 1-5 ESTRELLAS) */}
       <div className="px-4 pt-4">
-        <GoogleReviewsBooster restaurant={restaurant} />
+        <RatingFooter
+          restaurantId={restaurant.id || restaurant.slug}
+          restaurantName={restaurant.name}
+          onRatingSubmitted={handleRatingSubmitted}
+          onOpenReviewGate={handleOpenReviewGate}
+        />
       </div>
 
       {/* BRANDING FOOTER */}
@@ -677,7 +807,17 @@ export default function RestaurantDetailPage() {
         </Link>
       </div>
 
-      {/* SCHEDULE MODAL (Triggered by Liquid Glass Pill) */}
+      {/* SMART REVIEW GATE MODAL (1.5H & ?demo=true) */}
+      <ReviewGateModal
+        restaurantId={restaurant.id || restaurant.slug}
+        restaurantName={restaurant.name}
+        googleMapsUrl={restaurant.googleMapsUrl}
+        isOpenExplicitly={showReviewModal}
+        initialScore={modalInitialScore}
+        onClose={() => setShowReviewModal(false)}
+      />
+
+      {/* SCHEDULE MODAL */}
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 w-full max-w-sm space-y-4 shadow-2xl animate-scaleUp border border-slate-100 dark:border-slate-800">
@@ -787,7 +927,7 @@ export default function RestaurantDetailPage() {
                     type="button"
                     onClick={() => {
                       if (matchingDiet) {
-                        setSelectedDietFilter(matchingDiet.id);
+                        handleFilterChange(matchingDiet.id);
                         setShowAllergensGuide(false);
                       }
                     }}
@@ -825,6 +965,16 @@ export default function RestaurantDetailPage() {
           </div>
         </div>
       )}
+
+      {/* DISH DETAIL LIGHTBOX / MODAL */}
+      <DishDetailModal
+        isOpen={Boolean(selectedDishForModal)}
+        onClose={() => setSelectedDishForModal(null)}
+        dish={selectedDishForModal?.dish || null}
+        categoryName={selectedDishForModal?.categoryName}
+        restaurantName={restaurant.name}
+        restaurantSlug={restaurant.slug}
+      />
     </div>
   );
 }

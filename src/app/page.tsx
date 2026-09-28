@@ -61,16 +61,31 @@ export default function HomePage() {
   const normalizeText = (text: string) =>
     text ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
 
+  // Random shuffle state for equal visibility across all restaurants on every refresh
+  const [shuffledIds, setShuffledIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (restaurants.length > 0) {
+      const ids = restaurants.map((r) => r.id);
+      // Fisher-Yates random shuffle algorithm
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      setShuffledIds(ids);
+    }
+  }, [restaurants.length]);
+
   // Count currently open restaurants
   const openCount = useMemo(() => {
     return restaurants.filter((r) => getOpenStatus(r.schedule).isOpen).length;
   }, [restaurants]);
 
-  // Filter logic
+  // Filter logic with equitable random shuffle ordering
   const filteredRestaurants = useMemo(() => {
     const normalizedQuery = normalizeText(searchTerm);
 
-    return restaurants.filter((r) => {
+    const filtered = restaurants.filter((r) => {
       // Open now filter
       if (onlyOpenNow) {
         const status = getOpenStatus(r.schedule);
@@ -111,7 +126,19 @@ export default function HomePage() {
       }
       return r.category === selectedFilter;
     });
-  }, [restaurants, searchTerm, selectedFilter, selectedZone, onlyOpenNow]);
+
+    // Apply client-side random shuffle order if no active search query
+    if (!normalizedQuery && shuffledIds.length > 0) {
+      return [...filtered].sort((a, b) => {
+        const indexA = shuffledIds.indexOf(a.id);
+        const indexB = shuffledIds.indexOf(b.id);
+        if (indexA === -1 || indexB === -1) return 0;
+        return indexA - indexB;
+      });
+    }
+
+    return filtered;
+  }, [restaurants, searchTerm, selectedFilter, selectedZone, onlyOpenNow, shuffledIds]);
 
   const categories = [
     { id: 'todos', label: '🔥 Todos' },
@@ -367,13 +394,6 @@ export default function HomePage() {
                         <MapPin className="w-3.5 h-3.5 text-torre-600 shrink-0" />
                         <span>{restaurant.zone}</span>
                       </div>
-
-                      {restaurant.capacity && (
-                        <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-bold bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <Users className="w-3.5 h-3.5 text-torre-600 shrink-0" />
-                          <span>Aforo: {restaurant.capacity} plazas</span>
-                        </div>
-                      )}
 
                       <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-medium ml-auto">
                         <Clock className="w-3 h-3 text-slate-400" />

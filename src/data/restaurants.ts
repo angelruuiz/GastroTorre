@@ -45,6 +45,8 @@ export interface Restaurant {
   address: string;
   zone: string; // e.g., 'Torrelodones Pueblo' | 'Torrelodones Colonia'
   googleMapsUrl: string;
+  googlePlaceId?: string;
+  isVerified?: boolean;
   phone: string;
   whatsapp: string;
   bookingType: 'phone' | 'whatsapp' | 'online' | 'walkin';
@@ -87,7 +89,7 @@ export interface Restaurant {
 
 export const INITIAL_RESTAURANTS: Restaurant[] = [
   {
-    id: "asador-los-jarales",
+    id: "a1000000-0000-0000-0000-000000000001",
     slug: "asador-los-jarales",
     name: "Asador Los Jarales",
     tagline: "Brasas de encina, carnes maduradas y cocina castellana",
@@ -96,21 +98,21 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     category: "carnes",
     priceLevel: "€€€",
     rating: 4.8,
-    reviewCount: 420,
+    reviewCount: 422,
     capacity: 95,
     coverImage: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1000&auto=format&fit=crop",
-    logoImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=300&auto=format&fit=crop",
+    logoImage: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=300&auto=format&fit=crop",
     address: "Camino de Valladolid, 14, 28250 Torrelodones (Pueblo)",
     zone: "Torrelodones Pueblo",
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Asador+Los+Jarales+Camino+de+Valladolid+14+Torrelodones",
+    googleMapsUrl: "https://maps.google.com/?q=Asador+Los+Jarales+Torrelodones",
     phone: "+34 918 59 12 34",
-    whatsapp: "+34 612 345 678",
+    whatsapp: "+34 600 111 222",
     bookingType: "phone",
     dailyMenu: {
       isActive: true,
-      price: 15.50,
+      price: 16.50,
       firstCourses: [
-        "Salmorejo cordobés con crujiente de ibérico y huevo duro",
+        "Salmorejo cordobés con jamón ibérico y huevo duro",
         "Ensalada templada de queso de cabra con frutos rojos",
         "Pote gallego tradicional de cuchara"
       ],
@@ -125,14 +127,15 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
         "Fruta fresca de temporada o Café arábica"
       ],
       includes: "Incluye primer plato, segundo plato, pan, 1 bebida y postre o café.",
-      scheduleNotes: "Disponible de Martes a Viernes de 13:30 a 16:30 (no festivos)."
+      scheduleNotes: "Disponible de Martes a Viernes de 13:30 a 16:30."
     },
     schedule: {
       days: "Martes a Domingo",
-      lunch: "13:30 - 16:30",
-      dinner: "20:30 - 23:45"
+      lunch: "13:00 - 17:00",
+      dinner: "20:30 - 23:45",
+      isTemporarilyClosed: false
     },
-    features: ["Terraza ajardinada", "Chuletero a la vista", "Parking gratuito", "Bodega de autor"],
+    features: ["Carnes a la Brasa", "Terraza ajardinada", "Chuletero a la vista", "Parking gratuito", "Opciones Celíacos"],
     featured: true,
     stats: {
       monthlyViews: 540,
@@ -155,51 +158,76 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     },
     menu: [
       {
-        id: "entrantes",
-        name: "Entrantes de la Casa",
+        id: "c1000000-0000-0000-0000-000000000001",
+        name: "Entrantes & Huerta",
         description: "Para compartir al centro de mesa",
         dishes: [
           {
-            id: "j-1",
-            name: "Jamón Ibérico 100% Bellota con Pan de Cristal y Tomate",
-            description: "Cortado a cuchillo al momento, acompañado de aceite virgen extra de Madrid",
+            id: "d1000000-0000-0000-0000-000000000001",
+            name: "Jamón Ibérico 100% Bellota D.O. Dehesa de Extremadura",
+            description: "Cortado a cuchillo al momento con pan de cristal y tomate rallado con AOVE.",
             price: 24.50,
             image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
-            allergens: ["gluten"],
+            allergens: [],
             isSpecialty: true,
-            isAvailable: true
+            isAvailable: true,
+            isGlutenFree: true
           },
           {
-            id: "j-2",
-            name: "Croquetas Caseras de Cecina de León y Trufa (6 uds)",
-            description: "Bechamel cremosa con leche fresca de la sierra y rebozado panko extra crujiente",
+            id: "d1000000-0000-0000-0000-000000000002",
+            name: "Croquetas Cremosas de Cecina de León y Boletus (6 uds)",
+            description: "Bechamel suave con leche fresca de la sierra de Guadarrama y rebozado crujiente panko.",
             price: 14.50,
             image: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo"],
-            isSpecialty: true,
+            isSpecialty: false,
             isAvailable: true
           },
           {
-            id: "j-3",
-            name: "Mollejas de Cordero Lechal Salteadas al Ajillo con Boletus",
-            description: "Doradas a fuego vivo con ajo tierno, boletus edulis y reducción de Pedro Ximénez",
-            price: 14.50,
+            id: "d1000000-0000-0000-0000-000000000003",
+            name: "Ensalada de Tomate Rosa de la Sierra con Ventresca de Bonito del Norte",
+            description: "Tomate de temporada, cebolla morada dulce, piparras y aceite de oliva virgen extra de Madrid.",
+            price: 15.50,
+            image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=600&auto=format&fit=crop",
+            allergens: ["pescado"],
+            isSpecialty: false,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d1000000-0000-0000-0000-000000000004",
+            name: "Mollejas de Cordero Lechal Salteadas al Ajillo con Ajos Tiernos",
+            description: "Doradas a fuego vivo con ajo tierno, reducción de vino blanco de Madrid y perejil fresco.",
+            price: 16.00,
+            image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=600&auto=format&fit=crop",
             allergens: [],
+            isSpecialty: false,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d1000000-0000-0000-0000-000000000005",
+            name: "Alcachofas a la Brasa de Encina con Flor de Sal Maldon y Lascas de Ibérico",
+            description: "Confitadas primero y pasadas por la brasa viva para un toque ahumado crujiente.",
+            price: 16.50,
+            image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop",
+            allergens: [],
+            isSpecialty: true,
             isAvailable: true,
             isGlutenFree: true
           }
         ]
       },
       {
-        id: "brasas",
-        name: "Nuestras Brasas de Encina",
+        id: "c1000000-0000-0000-0000-000000000002",
+        name: "Brasas de Encina & Carnes Maduradas",
         description: "Cortes nobles con maduración controlada",
         dishes: [
           {
-            id: "j-4",
-            name: "Chuletón de Vaca Rubia Gallega (Maduración 45 días) - 1kg",
-            description: "Servido sobre parrilla de carbón caliente, con sal marina en escamas y pimientos de Guernica",
-            price: 72.00,
+            id: "d1000000-0000-0000-0000-000000000006",
+            name: "Chuletón de Vaca Rubia Gallega Madurada (45 días) - 1kg",
+            description: "Servido sobre plato refractario caliente con sal marina en escamas y pimientos de Guernica.",
+            price: 68.00,
             image: "https://images.unsplash.com/photo-1558030006-450675393462?q=80&w=600&auto=format&fit=crop",
             allergens: [],
             isSpecialty: true,
@@ -207,59 +235,106 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             isGlutenFree: true
           },
           {
-            id: "j-5",
-            name: "Entrecot de Ternera de Guadarrama IGP (350g)",
-            description: "Carne tierna y jugosa con guarnición de patatas rústicas y pimientos de padrón",
-            price: 24.00,
+            id: "d1000000-0000-0000-0000-000000000007",
+            name: "Entrecot de Ternera de Guadarrama IGP (350g) a la Brasa",
+            description: "Corte tierno y jugoso con guarnición de patatas rústicas y pimientos asados a la leña.",
+            price: 24.50,
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
             allergens: [],
+            isSpecialty: false,
             isAvailable: true,
             isGlutenFree: true
           },
           {
-            id: "j-6",
-            name: "Paletilla de Cordero Lechal Asada a Baja Temperatura",
-            description: "14 horas de cocción lenta y golpe de horno final para piel súper crujiente",
-            price: 29.50,
+            id: "d1000000-0000-0000-0000-000000000008",
+            name: "Cuarto de Cordero Lechal Asado en Horno de Leña Tradicional",
+            description: "Cocción lenta de 4 horas estilo Aranda con ensalada verde de la huerta.",
+            price: 32.00,
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
             allergens: [],
             isSpecialty: true,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d1000000-0000-0000-0000-000000000009",
+            name: "Secreto Ibérico de Bellota a las Brasas con Patatas al Romero",
+            description: "Carne infiltrada y muy jugosa con pimientos de padrón y sal escamada.",
+            price: 21.50,
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
+            allergens: [],
+            isSpecialty: false,
             isAvailable: true,
             isGlutenFree: true
           }
         ]
       },
       {
-        id: "postres",
+        id: "c1000000-0000-0000-0000-000000000003",
+        name: "Pescados & Platos de Temporada",
+        description: "Pescados frescos del día a la parrilla",
+        dishes: [
+          {
+            id: "d1000000-0000-0000-0000-000000000010",
+            name: "Lubina Salvaje a la Espalda al Fuego de Encina con Refrito Bilbaíno",
+            description: "Pescado fresco del día abierto en mariposa con ajos dorados, guindilla y vinagre de sidra.",
+            price: 25.50,
+            image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=600&auto=format&fit=crop",
+            allergens: ["pescado"],
+            isSpecialty: true,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d1000000-0000-0000-0000-000000000011",
+            name: "Pulpo de Roca a la Brasa sobre Parmentier de Patata y Pimentón de la Vera",
+            description: "Pata de pulpo crujiente por fuera y tierna por dentro con AOVE virgen extra.",
+            price: 23.00,
+            image: "https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?q=80&w=600&auto=format&fit=crop",
+            allergens: ["moluscos", "lactosa"],
+            isSpecialty: false,
+            isAvailable: true,
+            isGlutenFree: true
+          }
+        ]
+      },
+      {
+        id: "c1000000-0000-0000-0000-000000000004",
         name: "Postres Artesanos",
         description: "Elaborados diariamente por nuestro obrador",
         dishes: [
           {
-            id: "j-7",
-            name: "Tarta de Queso Fluida al Horno con Toque de Queso de Cabra de la Sierra",
-            description: "Centro fundente con base de galleta de mantequilla y helado de frutos rojos",
+            id: "d1000000-0000-0000-0000-000000000012",
+            name: "Tarta de Queso Fluida al Horno con Queso de Cabra de Guadarrama",
+            description: "Centro cremoso fundente, base de galleta artesana y coulis de frutos del bosque.",
             price: 7.50,
             image: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo"],
             isSpecialty: true,
-            isAvailable: false
+            isAvailable: true,
+            isVegetarian: true
           },
           {
-            id: "j-8",
-            name: "Torrija Caramelizada en Pan Brioche con Helado de Vainilla Bourbon",
-            description: "Empapada en infusión de leche, canela y cítricos",
+            id: "d1000000-0000-0000-0000-000000000013",
+            name: "Torrija Caramelizada en Pan Brioche con Helado de Leche Merengada",
+            description: "Empapada 24h en infusión de leche fresca, canela y cítricos, dorada con azúcar moreno.",
             price: 7.00,
+            image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo"],
-            isAvailable: true
+            isSpecialty: false,
+            isAvailable: true,
+            isVegetarian: true
           }
         ]
       }
     ]
   },
   {
-    id: "la-tavola",
+    id: "a1000000-0000-0000-0000-000000000002",
     slug: "la-tavola",
     name: "La Tavola di Torrelodones",
     tagline: "Auténtica trattoria italiana con horno de leña napolitano",
-    description: "Una pequeña Italia en el corazón de la Colonia de Torrelodones. Pastas frescas amasadas a mano cada mañana, pizzas napolitanas de fermentación 72h e ingredientes 100% con denominación de origen.",
+    description: "Una pequeña Italia en el corazón de la Colonia de Torrelodones. Pastas frescas amasadas a mano cada mañana, pizzas napolitanas de fermentación lenta 72h e ingredientes 100% con denominación de origen protegida.",
     cuisine: "Italiana Tradicional & Pizzería Napolitana",
     category: "italiana",
     priceLevel: "€€",
@@ -270,28 +345,69 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     logoImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=300&auto=format&fit=crop",
     address: "Calle Jesús Burgueño, 8, 28250 Torrelodones (Colonia)",
     zone: "Torrelodones Colonia",
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Tavola+di+Torrelodones+Calle+Jesus+Burgueno+8+Torrelodones",
+    googleMapsUrl: "https://maps.google.com/?q=La+Tavola+Torrelodones",
     phone: "+34 918 59 45 67",
     whatsapp: "+34 699 888 777",
     bookingType: "whatsapp",
+    dailyMenu: {
+      isActive: true,
+      price: 15.50,
+      firstCourses: [
+        "Insalata Caprese con Mozzarella di Bufala DOP y Albahaca Fresca",
+        "Minestrone Tradicional de Verduras de Temporada con Pesto",
+        "Carpaccio de Calabacín con Parmigiano y Piñones"
+      ],
+      secondCourses: [
+        "Rigatoni all’Amatriciana con Guanciale Crujiente",
+        "Pizza Margherita Napolitana con Fior di Latte",
+        "Escalope Milanesa de Pollo Campero con Patatas Rústicas"
+      ],
+      desserts: [
+        "Tiramisú Clásico Casero de Treviso",
+        "Panna Cotta con Frutos Rojos",
+        "Café Espresso Italiano"
+      ],
+      includes: "Incluye primer plato, segundo plato, pan casero, 1 bebida y postre o café.",
+      scheduleNotes: "Disponible de Miércoles a Viernes de 13:00 a 16:30."
+    },
     schedule: {
       days: "Miércoles a Domingo",
-      lunch: "13:00 - 16:00",
-      dinner: "20:00 - 23:30"
+      lunch: "13:00 - 16:30",
+      dinner: "20:00 - 23:45",
+      isTemporarilyClosed: false
     },
-    features: ["Horno de leña", "Masa madre 72h", "Terraza climatizada", "Carta de vinos italianos"],
+    features: ["Horno de leña", "Masa madre 72h", "Terraza climatizada", "Carta de vinos italianos", "Opciones Celíacos"],
     featured: true,
+    stats: {
+      monthlyViews: 480,
+      monthlyBookings: 32,
+      weeklyGrowth: 18,
+      topDishes: [
+        { name: "Tagliatelle al Tartufo Nero", views: 210 },
+        { name: "Pizza Tartufata & Prosciutto", views: 195 },
+        { name: "Tiramisú Clásico", views: 160 },
+      ],
+      scansByDay: [
+        { day: "Lun", count: 0 },
+        { day: "Mar", count: 0 },
+        { day: "Mié", count: 48 },
+        { day: "Jue", count: 72 },
+        { day: "Vie", count: 110 },
+        { day: "Sáb", count: 155 },
+        { day: "Dom", count: 95 },
+      ],
+    },
     menu: [
       {
-        id: "antipasti",
-        name: "Antipasti (Entrantes Italianos)",
+        id: "c2000000-0000-0000-0000-000000000001",
+        name: "Antipasti & Entrantes Italianos",
         description: "Sabores directos del sur y norte de Italia",
         dishes: [
           {
-            id: "t-1",
-            name: "Burrata di Puglia DOP con Pesto Genovese y Tomates Confitados",
-            description: "Corazón cremoso de stracciatella, piñones tostados y focaccia artesanal",
-            price: 16.00,
+            id: "d2000000-0000-0000-0000-000000000001",
+            name: "Burrata di Puglia DOP con Tomates Confitados y Pesto Genovese",
+            description: "Corazón cremoso de stracciatella fresca, piñones tostados, rúcula salvaje y focaccia caliente.",
+            price: 16.50,
             image: "https://images.unsplash.com/photo-1592417817098-8f3d6eb22509?q=80&w=600&auto=format&fit=crop",
             allergens: ["lactosa", "frutos-secos", "gluten"],
             isSpecialty: true,
@@ -299,25 +415,37 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             isVegetarian: true
           },
           {
-            id: "t-2",
-            name: "Carpaccio de Solomillo de Ternera con Virutas de Parmigiano Reggiano 24 Meses",
-            description: "Con rúcula fresca selvática, alcaparras y emulsión de mostaza dijon",
+            id: "d2000000-0000-0000-0000-000000000002",
+            name: "Carpaccio de Solomillo de Ternera con Parmigiano Reggiano 24 Meses",
+            description: "Láminas finísimas de ternera marinada con emulsión de mostaza dijon, alcaparras baby y AOVE.",
             price: 16.00,
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
             allergens: ["lactosa"],
+            isSpecialty: false,
             isAvailable: true,
             isGlutenFree: true
+          },
+          {
+            id: "d2000000-0000-0000-0000-000000000003",
+            name: "Vitello Tonnato Piamontés Tradicional",
+            description: "Finas lonchas de redondo de ternera lechal con cremosa salsa de atún, alcaparras y anchoas del Cantábrico.",
+            price: 15.50,
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
+            allergens: ["pescado", "huevo"],
+            isSpecialty: false,
+            isAvailable: true
           }
         ]
       },
       {
-        id: "paste",
-        name: "Pastas Frescas al Huevo",
-        description: "Elaboradas diariamente en nuestro laboratorio",
+        id: "c2000000-0000-0000-0000-000000000002",
+        name: "Pastas Frescas Hechas a Mano",
+        description: "Elaboradas diariamente en nuestro laboratorio artesano",
         dishes: [
           {
-            id: "t-3",
-            name: "Tagliatelle al Tartufo Nero y Parmigiano en Rueda",
-            description: "Pasta al dente mantecada con crema de trufa negra fresca de temporada y mantequilla alpina",
+            id: "d2000000-0000-0000-0000-000000000004",
+            name: "Tagliatelle al Tartufo Nero Fresco y Rueda de Parmigiano",
+            description: "Pasta al huevo fresca elaborada cada mañana, mantecada con crema de trufa negra y mantequilla alpina.",
             price: 21.50,
             image: "https://images.unsplash.com/photo-1621996346565-e3d5d6281691?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo"],
@@ -326,50 +454,103 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             isVegetarian: true
           },
           {
-            id: "t-4",
-            name: "Ravioloni Rellenos de Ricotta y Espinacas con Salsa de Mantequilla y Salvia",
-            description: "Toque crujiente de nueces caramelizadas",
-            price: 21.50,
+            id: "d2000000-0000-0000-0000-000000000005",
+            name: "Spaghetti alla Carbonara Auténtica con Guanciale Crujiente",
+            description: "Receta romana auténtica: yema de huevo de corral, queso Pecorino Romano DOP y pimienta negra molida (sin nata).",
+            price: 17.00,
+            image: "https://images.unsplash.com/photo-1612874742237-6526221588e3?q=80&w=600&auto=format&fit=crop",
+            allergens: ["gluten", "lactosa", "huevo"],
+            isSpecialty: false,
+            isAvailable: true
+          },
+          {
+            id: "d2000000-0000-0000-0000-000000000006",
+            name: "Ravioloni Rellenos de Ricotta de Búfala y Espinacas con Salvia",
+            description: "Salsa suave de mantequilla avellanada, salvia fresca y lluvia de nueces de Sorrento tostadas.",
+            price: 18.50,
+            image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa", "huevo", "frutos-secos"],
+            isSpecialty: false,
             isAvailable: true,
             isVegetarian: true
           }
         ]
       },
       {
-        id: "pizze",
-        name: "Pizzas Napolitanas",
+        id: "c2000000-0000-0000-0000-000000000003",
+        name: "Pizzas Napolitanas (Horno de Leña)",
         description: "Harina tipo 00, fermentación 72 horas y cocción a 480°C",
         dishes: [
           {
-            id: "t-5",
+            id: "d2000000-0000-0000-0000-000000000007",
             name: "Pizza Margherita Verace DOP",
-            description: "Tomate San Marzano, mozzarella fior di latte, albahaca fresca y AOVE",
-            price: 14.90,
+            description: "Tomate San Marzano ecológico, mozzarella Fior di Latte fresca, albahaca recién cortada y AOVE.",
+            price: 14.50,
             image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa"],
+            isSpecialty: false,
             isAvailable: true,
             isVegetarian: true
           },
           {
-            id: "t-6",
-            name: "Pizza Diavola & Nduja Calabresa",
-            description: "Mozzarella, salami picante spianata, nduja artesanal y miel de flores",
-            price: 16.50,
+            id: "d2000000-0000-0000-0000-000000000008",
+            name: "Pizza Tartufata & Prosciutto di Parma 24 Meses",
+            description: "Base de mozzarella di bufala, crema de trufa negra, boletus edulis y jamón de Parma añadido tras el horno.",
+            price: 19.00,
+            image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=600&auto=format&fit=crop",
             allergens: ["gluten", "lactosa"],
             isSpecialty: true,
             isAvailable: true
+          },
+          {
+            id: "d2000000-0000-0000-0000-000000000009",
+            name: "Pizza Diavola & Nduja Calabresa Artesanal",
+            description: "Tomate San Marzano, mozzarella, spianata picante di Calabria, toque de nduja y gotas de miel de azahar.",
+            price: 16.50,
+            image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?q=80&w=600&auto=format&fit=crop",
+            allergens: ["gluten", "lactosa"],
+            isSpecialty: false,
+            isAvailable: true
+          }
+        ]
+      },
+      {
+        id: "c2000000-0000-0000-0000-000000000004",
+        name: "Dolci Tradizionali",
+        description: "Postres clásicos de la tradición italiana",
+        dishes: [
+          {
+            id: "d2000000-0000-0000-0000-000000000010",
+            name: "Tiramisú Clásico Casero de Treviso",
+            description: "Bizcocho Savoiardi bañado en café Illy espresso con crema sedosa de mascarpone y cacao amargo Valrhona.",
+            price: 7.00,
+            image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?q=80&w=600&auto=format&fit=crop",
+            allergens: ["gluten", "lactosa", "huevo"],
+            isSpecialty: true,
+            isAvailable: true,
+            isVegetarian: true
+          },
+          {
+            id: "d2000000-0000-0000-0000-000000000011",
+            name: "Cannoli Siciliani Rellenos de Ricotta Dulce y Pistacho de Bronte",
+            description: "Masa crujiente frita al momento, crema de ricotta de oveja con naranja confitada y pepitas de chocolate.",
+            price: 7.50,
+            image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=600&auto=format&fit=crop",
+            allergens: ["gluten", "lactosa", "frutos-secos"],
+            isSpecialty: false,
+            isAvailable: true,
+            isVegetarian: true
           }
         ]
       }
     ]
   },
   {
-    id: "el-olivo-bistro",
+    id: "a1000000-0000-0000-0000-000000000003",
     slug: "el-olivo-bistro",
-    name: "Bistró El Olivo",
-    tagline: "Cocina mediterránea de autor, producto de mercado y arroces",
-    description: "Espacio íntimo y acogedor donde prima el producto de temporada. Arroces melosos en llanda, pescados salvajes del Cantábrico y una cuidada selección de más de 80 referencias de vino.",
+    name: "Bistró El Olivo & Arroces",
+    tagline: "Cocina mediterránea de autor, producto de mercado y arroces en llanda",
+    description: "Espacio gastronómico íntimo y acogedor en la Plaza de la Constitución. Arroces melosos en llanda, mariscos y pescados salvajes del Cantábrico y más de 80 referencias de vino seleccionadas por sumiller.",
     cuisine: "Mediterránea Contemporánea & Arrocería",
     category: "mediterranea",
     priceLevel: "€€",
@@ -380,54 +561,120 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     logoImage: "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?q=80&w=300&auto=format&fit=crop",
     address: "Plaza de la Constitución, 3, 28250 Torrelodones (Pueblo)",
     zone: "Torrelodones Pueblo",
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Bistro+El+Olivo+Plaza+de+la+Constitucion+3+Torrelodones",
+    googleMapsUrl: "https://maps.google.com/?q=Bistro+El+Olivo+Torrelodones",
     phone: "+34 918 59 78 90",
     whatsapp: "+34 644 112 233",
     bookingType: "online",
     bookingUrl: "https://gastrotorre.es/reservas/el-olivo",
+    dailyMenu: {
+      isActive: true,
+      price: 18.00,
+      firstCourses: [
+        "Crema de boletus con huevo poché y crujiente de ibérico",
+        "Tartar de tomate de la huerta con burrata y aguacate",
+        "Arroz meloso de verduras y calamar de potera"
+      ],
+      secondCourses: [
+        "Lomo de corvina a la plancha sobre salteado de bimi y tirabeques",
+        "Carrillera de ternera guisada al vino tinto de Madrid",
+        "Tataki de atún rojo con sésamo tostado y wakame"
+      ],
+      desserts: [
+        "Milhojas crujiente de crema diplomática",
+        "Sorbete de mandarina al cava",
+        "Café o infusión natural"
+      ],
+      includes: "Incluye primer plato, segundo plato, pan artesano, copa de vino D.O. Madrid o cerveza y postre.",
+      scheduleNotes: "Disponible de Martes a Viernes de 13:30 a 16:30."
+    },
     schedule: {
       days: "Martes a Domingo",
       lunch: "13:30 - 16:30",
-      dinner: "20:30 - 23:30"
+      dinner: "20:30 - 23:30",
+      isTemporarilyClosed: false
     },
-    features: ["Terraza en plaza peatonal", "Arroces por encargo", "Sommelier en sala", "Accesible"],
+    features: ["Terraza en plaza peatonal", "Arroces en llanda", "Sommelier en sala", "Pescados Salvajes", "Opciones Celíacos"],
     featured: true,
+    stats: {
+      monthlyViews: 610,
+      monthlyBookings: 45,
+      weeklyGrowth: 22,
+      topDishes: [
+        { name: "Arroz Meloso de Bogavante", views: 280 },
+        { name: "Tartar de Atún Rojo Balfegó", views: 240 },
+        { name: "Milhojas Crujiente", views: 185 },
+      ],
+      scansByDay: [
+        { day: "Lun", count: 10 },
+        { day: "Mar", count: 38 },
+        { day: "Mié", count: 55 },
+        { day: "Jue", count: 75 },
+        { day: "Vie", count: 135 },
+        { day: "Sáb", count: 165 },
+        { day: "Dom", count: 132 },
+      ],
+    },
     menu: [
       {
-        id: "entrantes",
-        name: "Entrantes & Platos de Mercado",
+        id: "c3000000-0000-0000-0000-000000000001",
+        name: "Entrantes de Mercado & Mar",
+        description: "Platos frescos elaborados con producto de lonja y huerta",
         dishes: [
           {
-            id: "o-1",
+            id: "d3000000-0000-0000-0000-000000000001",
             name: "Tartar de Atún Rojo Balfegó sobre Brioche de Mantequilla y Yema Curada",
-            description: "Aliñado con sésamo tostado, soja añeja y emulsión de wasabi suave",
-            price: 21.00,
+            description: "Aliñado con sésamo tostado, soja añeja, cebollino fresco y emulsión de wasabi suave.",
+            price: 22.50,
             image: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?q=80&w=600&auto=format&fit=crop",
-            allergens: ["gluten", "pescado", "soja", "huevo"],
+            allergens: ["pescado", "soja", "gluten", "huevo"],
             isSpecialty: true,
             isAvailable: true
           },
           {
-            id: "o-2",
-            name: "Alcachofas Confitadas a la Plancha con Velos de Jamón y Crema de Foie",
-            description: "Corazones de alcachofa de Tudela con flor de sal y crujiente ibérico",
-            price: 17.50,
+            id: "d3000000-0000-0000-0000-000000000002",
+            name: "Zamburiñas Gallegas a la Plancha con Emulsión de Albariño y Lima (8 uds)",
+            description: "Doradas a fuego vivo con crujiente de jamón ibérico y flor de sal.",
+            price: 19.00,
+            image: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?q=80&w=600&auto=format&fit=crop",
+            allergens: ["moluscos"],
+            isSpecialty: false,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d3000000-0000-0000-0000-000000000003",
+            name: "Alcachofas Confitadas a la Plancha con Láminas de Foie Fresco",
+            description: "Corazones tiernos de alcachofa de Tudela con reducción de Pedro Ximénez y escamas de sal.",
+            price: 18.50,
+            image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop",
             allergens: ["lactosa"],
-            isSpecialty: true,
+            isSpecialty: false,
             isAvailable: true,
             isGlutenFree: true
           }
         ]
       },
       {
-        id: "arroces",
-        name: "Nuestros Arroces (Mínimo 2 personas - Precio por ración)",
+        id: "c3000000-0000-0000-0000-000000000002",
+        name: "Arroces en Llanda & Paellas (Mín. 2 pers)",
+        description: "Elaborados con arroz bomba valenciano y fondos marinos de 8 horas",
         dishes: [
           {
-            id: "o-3",
-            name: "Arroz Meloso de Bogavante del Cantábrico y Gamba Roja",
-            description: "Fondo marino intenso de 8 horas de reducción lenta y arroz bomba valenciano",
-            price: 25.00,
+            id: "d3000000-0000-0000-0000-000000000004",
+            name: "Arroz del Senyoret con Sepia, Calamar de Playa, Gambón y Rape (ración)",
+            description: "Todo el marisco pelado listo para comer con capa fina socarrat y alioli casero de azafrán.",
+            price: 23.50,
+            image: "https://images.unsplash.com/photo-1536392706976-e486e2ba97af?q=80&w=600&auto=format&fit=crop",
+            allergens: ["pescado", "crustaceos", "moluscos", "huevo"],
+            isSpecialty: true,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d3000000-0000-0000-0000-000000000005",
+            name: "Arroz Meloso de Bogavante del Cantábrico con Fondo Marino Reducido (ración)",
+            description: "Caldo intenso cocinado 8h a fuego lento con medio bogavante por comensal.",
+            price: 27.00,
             image: "https://images.unsplash.com/photo-1536392706976-e486e2ba97af?q=80&w=600&auto=format&fit=crop",
             allergens: ["crustaceos", "pescado"],
             isSpecialty: true,
@@ -435,13 +682,73 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
             isGlutenFree: true
           },
           {
-            id: "o-4",
-            name: "Arroz Negro de Chipirones de Potera con Alioli Suave de Azafrán",
-            description: "Capa fina socarrat y chipirones salteados",
-            price: 19.50,
-            allergens: ["pescado", "huevo"],
+            id: "d3000000-0000-0000-0000-000000000006",
+            name: "Arroz de Presa Ibérica de Bellota, Boletus Edulis y Foie a la Brasa (ración)",
+            description: "Fondo de carne noble con setas de la sierra y lascas de foie caramelizado.",
+            price: 24.00,
+            image: "https://images.unsplash.com/photo-1536392706976-e486e2ba97af?q=80&w=600&auto=format&fit=crop",
+            allergens: ["lactosa"],
+            isSpecialty: false,
             isAvailable: true,
             isGlutenFree: true
+          }
+        ]
+      },
+      {
+        id: "c3000000-0000-0000-0000-000000000003",
+        name: "Pescados Salvajes & Carnes Nobles",
+        description: "Elaboraciones cuidadas con guarniciones de temporada",
+        dishes: [
+          {
+            id: "d3000000-0000-0000-0000-000000000007",
+            name: "Rodaballo Salvaje a la Plancha con Refrito de Ajos Tiernos y Verduras Confitadas",
+            description: "Pescado blanco noble con bilbaína suave y patatas panadera al horno.",
+            price: 26.50,
+            image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=600&auto=format&fit=crop",
+            allergens: ["pescado"],
+            isSpecialty: true,
+            isAvailable: true,
+            isGlutenFree: true
+          },
+          {
+            id: "d3000000-0000-0000-0000-000000000008",
+            name: "Presa Ibérica de Bellota con Chutney de Manzana Asada y Ciruelas",
+            description: "Marcada en brasa de encina con guarnición de puré fino de boniato.",
+            price: 23.50,
+            image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop",
+            allergens: [],
+            isSpecialty: false,
+            isAvailable: true,
+            isGlutenFree: true
+          }
+        ]
+      },
+      {
+        id: "c3000000-0000-0000-0000-000000000004",
+        name: "Repostería Creativa",
+        description: "Postres caseros de autor",
+        dishes: [
+          {
+            id: "d3000000-0000-0000-0000-000000000009",
+            name: "Milhojas Crujiente de Crema Diplomática con Frambuesas Frescas",
+            description: "Hojaldre de mantequilla caramelizado hecho a diario en nuestro obrador con crema suave de vainilla natural.",
+            price: 7.50,
+            image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=600&auto=format&fit=crop",
+            allergens: ["gluten", "lactosa", "huevo"],
+            isSpecialty: true,
+            isAvailable: true,
+            isVegetarian: true
+          },
+          {
+            id: "d3000000-0000-0000-0000-000000000010",
+            name: "Tarta Fina de Manzana Reineta Horneada con Helado de Vainilla Bourbon",
+            description: "Masa sable fina y crujiente con compota casera y láminas de manzana doradas.",
+            price: 8.00,
+            image: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?q=80&w=600&auto=format&fit=crop",
+            allergens: ["gluten", "lactosa", "huevo"],
+            isSpecialty: false,
+            isAvailable: true,
+            isVegetarian: true
           }
         ]
       }
@@ -463,14 +770,15 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     logoImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=300&auto=format&fit=crop",
     address: "Avenida de Torrelodones, 22, 28250 Torrelodones",
     zone: "Torrelodones Pueblo",
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Torre+Smash+Brew+Avenida+de+Torrelodones+22+Torrelodones",
+    googleMapsUrl: "https://maps.google.com/?q=Torre+Smash+Torrelodones",
     phone: "+34 918 59 99 11",
     whatsapp: "+34 600 777 888",
     bookingType: "walkin",
     schedule: {
       days: "Lunes a Domingo",
       lunch: "13:00 - 16:30",
-      dinner: "19:30 - 00:00"
+      dinner: "19:30 - 00:00",
+      isTemporarilyClosed: false
     },
     features: ["Cervezas IPA en grifo", "Sin reservas (Take Away)", "Pantallas deportivas", "Música Indie"],
     featured: true,
@@ -552,13 +860,14 @@ export const INITIAL_RESTAURANTS: Restaurant[] = [
     logoImage: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=300&auto=format&fit=crop",
     address: "Calle Real, 17, 28250 Torrelodones (Pueblo)",
     zone: "Torrelodones Pueblo",
-    googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Cafe+Brunch+La+Huerta+Calle+Real+17+Torrelodones",
+    googleMapsUrl: "https://maps.google.com/?q=La+Huerta+Torrelodones",
     phone: "+34 918 59 33 22",
     whatsapp: "+34 611 223 344",
     bookingType: "phone",
     schedule: {
       days: "Martes a Domingo",
-      lunch: "08:30 - 17:00"
+      lunch: "08:30 - 17:00",
+      isTemporarilyClosed: false
     },
     features: ["Café de especialidad", "Opciones sin gluten", "Pet friendly", "Terraza soleada", "Work-friendly WiFi"],
     featured: true,

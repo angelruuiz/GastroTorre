@@ -1,0 +1,223 @@
+[
+  {
+    "id": "d1000000-0000-0000-0000-000000000002",
+    "name": "Croquetas Cremosas de Cecina de León y Trufa (6 uds)",
+    "description": "Bechamel suave con leche fresca de la Sierra de Guadarrama y rebozado panko extra crujiente.",
+    "price": 13,
+    "allergens": [
+      "gluten",
+      "lacteos",
+      "huevos"
+    ],
+    "is_available": true,
+    "searchableText": "croquetas cremosas de cecina de león y trufa (6 uds) bechamel suave con leche fresca de la sierra de guadarrama y rebozado panko extra crujiente. gluten lacteos huevos"
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000006",
+    "name": "Cuarto de Lechazo Asado al Estilo Aranda",
+    "description": "Asado lentamente en horno de leña durante 3 horas. Piel crujiente y carne sumamente tierna.",
+    "price": 28,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "cuarto de lechazo asado al estilo aranda asado lentamente en horno de leña durante 3 horas. piel crujiente y carne sumamente tierna. "
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000008",
+    "name": "Tarta de Queso Fluida al Horno (Receta Donostiarra)",
+    "description": "Centro fundente con base de galleta de mantequilla y helado de frutos rojos.",
+    "price": 7.5,
+    "allergens": [
+      "gluten",
+      "lactosa",
+      "huevo"
+    ],
+    "is_available": true,
+    "searchableText": "tarta de queso fluida al horno (receta donostiarra) centro fundente con base de galleta de mantequilla y helado de frutos rojos. gluten lactosa huevo"
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000003",
+    "name": "Torreznos Crujientes de Soria con Pimientos de Padrón",
+    "description": "Cocción lenta a baja temperatura y golpe final de fritura para conseguir corteza soufflé perfecta.",
+    "price": 12.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "torreznos crujientes de soria con pimientos de padrón cocción lenta a baja temperatura y golpe final de fritura para conseguir corteza soufflé perfecta. "
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000005",
+    "name": "Entrecot de Ternera de Guadarrama (350g)",
+    "description": "Corte tierno y jugoso con guarnición de patatas panadera y pimientos asados a la leña.",
+    "price": 23.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "entrecot de ternera de guadarrama (350g) corte tierno y jugoso con guarnición de patatas panadera y pimientos asados a la leña. "
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000007",
+    "name": "Lomo de Lubina Salvaje a la Espalda con Bilbaína Tradicional",
+    "description": "Con ajos dorados, guindilla y vinagre de sidra, sobre cama de patata panadera.",
+    "price": 24.5,
+    "allergens": [
+      "pescado"
+    ],
+    "is_available": true,
+    "searchableText": "lomo de lubina salvaje a la espalda con bilbaína tradicional con ajos dorados, guindilla y vinagre de sidra, sobre cama de patata panadera. pescado"
+  },
+  {
+    "id": "33a6bd5b-d985-4195-afd7-de76aa32d094",
+    "name": "Precio",
+    "description": "Especialidad de la casa elaborada con ingredientes seleccionados.",
+    "price": 14.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "precio especialidad de la casa elaborada con ingredientes seleccionados. "
+  },
+  {
+    "id": "16bda0e8-799b-4787-a6bc-6e2a95920b87",
+    "name": "Paletilla de Cordero Lechal Asada a Baja Temperatura",
+    "description": "14 horas de cocción lenta y golpe de horno final para piel súper crujiente",
+    "price": 29.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "paletilla de cordero lechal asada a baja temperatura 14 horas de cocción lenta y golpe de horno final para piel súper crujiente "
+  },
+  {
+    "id": "10759dda-16f9-4a50-9218-ac57124d106f",
+    "name": "Torrija Caramelizada en Pan Brioche con Helado de Vainilla Bourbon",
+    "description": "Empapada en infusión de leche, canela y cítricos",
+    "price": 7,
+    "allergens": [
+      "gluten",
+      "lactosa",
+      "huevo"
+    ],
+    "is_available": true,
+    "searchableText": "torrija caramelizada en pan brioche con helado de vainilla bourbon empapada en infusión de leche, canela y cítricos gluten lactosa huevo"
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000001",
+    "name": "Jamón Ibérico de Bellota 100% (D.O. Guijuelo)",
+    "description": "Cortado a cuchillo al momento, acompañado de pan de cristal con tomate raf rallado y AOVE de Jaén.",
+    "price": 68,
+    "allergens": [
+      "gluten"
+    ],
+    "is_available": true,
+    "searchableText": "jamón ibérico de bellota 100% (d.o. guijuelo) cortado a cuchillo al momento, acompañado de pan de cristal con tomate raf rallado y aove de jaén. gluten"
+  },
+  {
+    "id": "11ce2e14-79bb-4ba8-a9b0-21f7294f3334",
+    "name": "Mollejas de Cordero Lechal Salteadas al Ajillo con Boletus",
+    "description": "Doradas a fuego vivo con ajo tierno, boletus edulis y reducción de Pedro Ximénez",
+    "price": 18.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "mollejas de cordero lechal salteadas al ajillo con boletus doradas a fuego vivo con ajo tierno, boletus edulis y reducción de pedro ximénez "
+  },
+  {
+    "id": "45ad7b8b-abf3-44d2-aeb3-4ca3dafc7ff0",
+    "name": "Precio",
+    "description": "Especialidad de la casa elaborada con ingredientes seleccionados.",
+    "price": 14.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "precio especialidad de la casa elaborada con ingredientes seleccionados. "
+  },
+  {
+    "id": "d1000000-0000-0000-0000-000000000004",
+    "name": "Chuletón de Vaca Rubia Gallega Madurada (Dry Aged 45 días - 1kg aprox)",
+    "description": "Asado a la brasa de encina viva con escamas de sal de Maldon. Servido sobre plato refractario.",
+    "price": 78,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "chuletón de vaca rubia gallega madurada (dry aged 45 días - 1kg aprox) asado a la brasa de encina viva con escamas de sal de maldon. servido sobre plato refractario. "
+  },
+  {
+    "id": "b8a3e24b-3c01-4e24-b145-3a24619be1a9",
+    "name": "Precio",
+    "description": "Especialidad de la casa elaborada con ingredientes seleccionados.",
+    "price": 14.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "precio especialidad de la casa elaborada con ingredientes seleccionados. "
+  },
+  {
+    "id": "ab960614-dc31-401d-b7ff-c994b04f9b51",
+    "name": "Precio",
+    "description": "Especialidad de la casa elaborada con ingredientes seleccionados.",
+    "price": 14.5,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "precio especialidad de la casa elaborada con ingredientes seleccionados. "
+  },
+  {
+    "id": "525050c5-bb41-4b9d-a1f7-6f22841fcc10",
+    "name": "Choco Frito de Bahía (Test EP)",
+    "description": "",
+    "price": 16,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "choco frito de bahía (test ep)  "
+  },
+  {
+    "id": "574d1e5c-cbd6-4ef2-8d6d-01d2ab0f1a1c",
+    "name": "Botella Gran Reserva Exclusiva (BVA High)",
+    "description": "",
+    "price": 999.99,
+    "allergens": [],
+    "is_available": false,
+    "searchableText": "botella gran reserva exclusiva (bva high)  "
+  },
+  {
+    "id": "2c3549c1-88e8-4552-a2aa-a6a648b802f3",
+    "name": "Patatas bravas",
+    "description": null,
+    "price": 10,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "patatas bravas  "
+  },
+  {
+    "id": "261d359a-7507-4eac-91f0-d7542e0acaf9",
+    "name": "Tarta de Santiago Tradicional",
+    "description": "Tarta tradicional gallega de almendra molida, canela y azúcar glass.",
+    "price": 7.5,
+    "allergens": [
+      "frutos-secos",
+      "huevo"
+    ],
+    "is_available": true,
+    "searchableText": "tarta de santiago tradicional tarta tradicional gallega de almendra molida, canela y azúcar glass. frutos-secos huevo"
+  },
+  {
+    "id": "83d91d9a-40f3-48ab-bec8-68a94095f9ad",
+    "name": "Tarta 3 chocolates",
+    "description": "La clásica tarta de la abuela , lleva lácteos",
+    "price": 7.5,
+    "allergens": [
+      "lactosa"
+    ],
+    "is_available": true,
+    "searchableText": "tarta 3 chocolates la clásica tarta de la abuela , lleva lácteos lactosa"
+  },
+  {
+    "id": "89c03352-3e76-41f0-9f88-5adc84b66747",
+    "name": "Pringles",
+    "description": "Pringles cebolla frutos secos",
+    "price": 3,
+    "allergens": [
+      "frutos-secos"
+    ],
+    "is_available": true,
+    "searchableText": "pringles pringles cebolla frutos secos frutos-secos"
+  },
+  {
+    "id": "d0b56e39-ce9b-4360-a9e5-7ec800a0dc44",
+    "name": "Tapa de Cortesía (0€ BVA)",
+    "description": "",
+    "price": 0,
+    "allergens": [],
+    "is_available": true,
+    "searchableText": "tapa de cortesía (0€ bva)  "
+  }
+]

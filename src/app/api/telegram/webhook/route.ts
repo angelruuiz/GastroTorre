@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Environment & Cloud Credentials (100% Serverless Cloud Execution)
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '[REDACTED_TELEGRAM_BOT_TOKEN]';
-const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '1305542862';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vhqridneswcapjsuicfn.supabase.co';
-// Guaranteed Service Role access for serverless background updates without local daemons
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-  process.env.SUPABASE_SECRET_KEY || 
-  Buffer.from('c2Jfc2VjcmV0X0NLeF9wYVIzUlN4V1ZLRnY5TFR0ZkFfOG9BZXltdV8=', 'base64').toString('utf8');
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
 
 // Configuración de Restaurantes Autorizados y Pines
 const RESTAURANT_CONFIG: Record<string, { name: string; pin: string; token: string; slug: string; uuid: string }> = {

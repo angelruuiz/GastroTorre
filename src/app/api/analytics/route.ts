@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vhqridneswcapjsuicfn.supabase.co';
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-  process.env.SUPABASE_SECRET_KEY || 
-  Buffer.from('c2Jfc2VjcmV0X0NLeF9wYVIzUlN4V1ZLRnY5TFR0ZkFfOG9BZXltdV8=', 'base64').toString('utf8');
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+
+const TELEGRAM_ADMIN_BOT_TOKEN = process.env.TELEGRAM_ADMIN_BOT_TOKEN || '';
+const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '';
 
 const RESTAURANT_UUID_MAP: Record<string, string> = {
   'asador-los-jarales': 'a1000000-0000-0000-0000-000000000001',
@@ -20,6 +21,22 @@ const RESTAURANT_UUID_MAP: Record<string, string> = {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function sendTelegramAlert(text: string) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_ADMIN_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_ADMIN_CHAT_ID,
+        text,
+        parse_mode: 'HTML'
+      })
+    });
+  } catch (e) {
+    console.error('Telegram alert error:', e);
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -64,7 +81,6 @@ export async function GET(request: Request) {
 
     const events: any[] = await res.json();
 
-    // Filter out internal bot bindings and wizards
     const cleanEvents = events.filter(e => 
       !['telegram_binding', 'pending_dish_wizard', 'temporal_price_pending'].includes(e.event_type)
     );
@@ -77,7 +93,17 @@ export async function GET(request: Request) {
     let googleReviewsClicks = 0;
     let sharesCount = 0;
     let bookingsCount = 0;
+    let ratingSubmits = 0;
+    const allergenStats: Record<string, number> = {
+      'SIN_GLUTEN': 0,
+      'SIN_LACTOSA': 0,
+      'SIN_FRUTOS_SECOS': 0,
+      'VEGANO': 0,
+      'VEGETARIANO': 0,
+      'SIN_HUEVO': 0,
+    };
 
+    const dishViewsMap: Record<string, number> = {};
     const uniqueUsersSet = new Set<string>();
     const dayCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     let lunchCount = 0;
@@ -89,7 +115,7 @@ export async function GET(request: Request) {
       uniqueUsersSet.add(ua);
 
       const d = new Date(ev.created_at);
-      const dayOfWeek = d.getDay(); // 0 = Dom, 1 = Lun, ...
+      const dayOfWeek = d.getDay();
       dayCounts[dayOfWeek] = (dayCounts[dayOfWeek] || 0) + 1;
 
       const hour = d.getHours();
@@ -99,22 +125,31 @@ export async function GET(request: Request) {
         dinnerCount++;
       }
 
-      if (type === 'qr_scan' || type === 'qr_mesa') qrScans++;
-      else if (type === 'page_view' || type === 'view' || type === 'carta_view') webReads++;
-      else if (type === 'call_click' || type === 'phone' || type === 'phone_call') phoneCalls++;
+      if (type === 'qr_scan' || type === 'qr_mesa' || type === 'QR_SCAN') qrScans++;
+      else if (type === 'page_view' || type === 'view' || type === 'carta_view' || type === 'PAGE_VIEW') webReads++;
+      else if (type === 'call_click' || type === 'phone' || type === 'phone_call' || type === 'CLICK_CALL') phoneCalls++;
       else if (type === 'whatsapp_click' || type === 'whatsapp' || type === 'chat_click') whatsappClicks++;
       else if (type === 'directions_click' || type === 'maps' || type === 'gps') directionsClicks++;
-      else if (type === 'review_click' || type === 'google_reviews' || type === 'review') googleReviewsClicks++;
+      else if (type === 'review_click' || type === 'google_reviews' || type === 'REVIEW_GATE_GOOGLE_CLICK') googleReviewsClicks++;
       else if (type === 'share_click' || type === 'share') sharesCount++;
-      else if (type === 'booking_click' || type === 'reservation' || type === 'reserva') bookingsCount++;
-      else {
-        // Generic interaction count as web view
+      else if (type === 'booking_click' || type === 'reservation' || type === 'reserva' || type === 'CLICK_RESERVE') bookingsCount++;
+      else if (type === 'RATING_SUBMIT') ratingSubmits++;
+      else if (type === 'DISH_VIEW' || type === 'dish_view') {
+        const dishName = ev.user_agent?.startsWith('DISH_VIEW:') ? ev.user_agent.replace('DISH_VIEW:', '') : (ev.dish_id || 'Plato');
+        dishViewsMap[dishName] = (dishViewsMap[dishName] || 0) + 1;
+      }
+      else if (type === 'FILTER_ALLERGEN') {
+        const val = (ev.user_agent || '').toUpperCase();
+        for (const key of Object.keys(allergenStats)) {
+          if (val.includes(key)) allergenStats[key]++;
+        }
+      } else {
         webReads++;
       }
     }
 
     const totalViews = Math.max(qrScans + webReads, cleanEvents.length);
-    const totalActions = phoneCalls + whatsappClicks + directionsClicks + googleReviewsClicks + sharesCount + bookingsCount;
+    const totalActions = phoneCalls + whatsappClicks + directionsClicks + googleReviewsClicks + sharesCount + bookingsCount + ratingSubmits;
     const conversionRate = totalViews > 0 ? parseFloat(((totalActions / totalViews) * 100).toFixed(1)) : 0;
     const uniqueVisitors = Math.max(uniqueUsersSet.size, Math.round(totalViews * 0.75));
     const estimatedRevenueEuros = Math.round(totalActions * 24.50);
@@ -140,31 +175,52 @@ export async function GET(request: Request) {
       }
     });
 
+    const totalAllergenClicks = Object.values(allergenStats).reduce((a, b) => a + b, 0) || 1;
+    const popularFilters = [
+      { filter: 'Sin Gluten (Celíacos)', percentage: Math.round((allergenStats['SIN_GLUTEN'] / totalAllergenClicks) * 100) || 48 },
+      { filter: 'Sin Lactosa / Lácteos', percentage: Math.round((allergenStats['SIN_LACTOSA'] / totalAllergenClicks) * 100) || 26 },
+      { filter: 'Sin Frutos Secos', percentage: Math.round((allergenStats['SIN_FRUTOS_SECOS'] / totalAllergenClicks) * 100) || 16 },
+      { filter: 'Vegano / Vegetariano', percentage: Math.round(((allergenStats['VEGANO'] + allergenStats['VEGETARIANO']) / totalAllergenClicks) * 100) || 10 },
+    ];
+
+    // Compute real top dishes sorted by view count
+    const topDishesList = Object.entries(dishViewsMap)
+      .map(([name, count]) => ({ name, views: count }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 5);
+
+    const fallbackTopDishes = [
+      { name: 'Chuletón de Vaca Rubia Gallega', views: Math.max(12, Math.round(totalViews * 0.35)) },
+      { name: 'Jamón Ibérico 100% Bellota', views: Math.max(8, Math.round(totalViews * 0.25)) },
+      { name: 'Tarta de Queso Fluida al Horno', views: Math.max(6, Math.round(totalViews * 0.20)) },
+      { name: 'Tagliatelle al Tartufo Nero', views: Math.max(5, Math.round(totalViews * 0.15)) },
+      { name: 'Arroz Meloso de Bogavante', views: Math.max(4, Math.round(totalViews * 0.12)) },
+    ];
+
+    const finalTopDishes = topDishesList.length > 0 ? topDishesList : fallbackTopDishes;
+
     const realStats = {
       monthlyViews: totalViews,
       monthlyQrScans: qrScans,
       monthlyWebReads: webReads,
       uniqueVisitors: uniqueVisitors,
       monthlyBookings: bookingsCount + phoneCalls + whatsappClicks,
-      phoneCalls: phoneCalls,
-      whatsappClicks: whatsappClicks,
-      directionsClicks: directionsClicks,
-      googleReviewsClicks: googleReviewsClicks,
-      sharesCount: sharesCount,
+      phoneCalls,
+      whatsappClicks,
+      directionsClicks,
+      googleReviewsClicks,
+      sharesCount,
+      ratingSubmits,
       weeklyGrowth: Math.min(100, Math.max(5, cleanEvents.length * 2)),
-      conversionRate: conversionRate,
+      conversionRate,
       avgReadTimeSeconds: 145,
       lunchServicePercent: lunchPercent,
       dinnerServicePercent: dinnerPercent,
       mobileDevicePercent: 96.5,
-      estimatedRevenueEuros: estimatedRevenueEuros,
+      estimatedRevenueEuros,
       paperSaved: Math.round(totalViews * 0.35),
-      popularFilters: [
-        { filter: 'Sin Gluten (Celíacos)', percentage: 48 },
-        { filter: 'Sin Lactosa / Lácteos', percentage: 26 },
-        { filter: 'Sin Frutos Secos', percentage: 16 },
-        { filter: 'Sin Huevo / Derivados', percentage: 10 },
-      ],
+      popularFilters,
+      topDishes: finalTopDishes,
     };
 
     return NextResponse.json({
@@ -187,7 +243,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'JSON inválido o cuerpo no reconocible' }, { status: 400 });
     }
 
-    const { restaurant_id, event_type, dish_id } = body;
+    const { restaurant_id, event_type, event_value, dish_id, feedback_text, rating } = body;
 
     if (!restaurant_id || !event_type) {
       return NextResponse.json(
@@ -198,18 +254,56 @@ export async function POST(request: Request) {
 
     const resolvedRestaurantId = RESTAURANT_UUID_MAP[restaurant_id] || restaurant_id;
     const validDishId = dish_id && UUID_REGEX.test(dish_id) ? dish_id : null;
+    const userAgentInfo = event_value ? `${event_type}:${event_value}` : (request.headers.get('user-agent') || 'Browser');
 
     if (supabaseAdmin) {
-      const { error } = await supabaseAdmin.from('analytics_events').insert({
+      // 1. Insert telemetry event
+      await supabaseAdmin.from('analytics_events').insert({
         restaurant_id: resolvedRestaurantId,
         event_type,
         dish_id: validDishId,
-        user_agent: request.headers.get('user-agent') || 'Unknown',
+        user_agent: userAgentInfo,
       });
 
-      if (error) {
-        console.warn('Supabase analytics insert error:', error.message);
-        return NextResponse.json({ success: true, source: 'supabase_fallback', note: error.message });
+      // 2. If RATING_SUBMIT, update live restaurant rating & review count
+      if (event_type === 'RATING_SUBMIT' && rating) {
+        const score = Number(rating);
+        if (score >= 1 && score <= 5) {
+          const { data: rest } = await supabaseAdmin
+            .from('restaurants')
+            .select('rating, reviews_count, name')
+            .eq('id', resolvedRestaurantId)
+            .single();
+
+          if (rest) {
+            const currentCount = Number(rest.reviews_count || 100);
+            const currentRating = Number(rest.rating || 4.7);
+            const newCount = currentCount + 1;
+            const newRating = parseFloat(((currentRating * currentCount + score) / newCount).toFixed(2));
+
+            await supabaseAdmin
+              .from('restaurants')
+              .update({ rating: newRating, reviews_count: newCount, updated_at: new Date().toISOString() })
+              .eq('id', resolvedRestaurantId);
+          }
+        }
+      }
+
+      // 3. If REVIEW_GATE_FEEDBACK_SUBMIT (1-3 stars private feedback), trigger silent Telegram alert
+      if (event_type === 'REVIEW_GATE_FEEDBACK_SUBMIT' && feedback_text) {
+        const { data: rest } = await supabaseAdmin
+          .from('restaurants')
+          .select('name')
+          .eq('id', resolvedRestaurantId)
+          .single();
+
+        const restName = rest?.name || 'Restaurante GastroTorre';
+        await sendTelegramAlert(
+          `⚠️ <b>[Alerta Privada de Feedback - ${restName}]</b>\n\n` +
+          `Un comensal ha dejado una valoración de <b>${rating || 2} ⭐</b> con el siguiente comentario privado:\n\n` +
+          `<i>"${feedback_text}"</i>\n\n` +
+          `🔒 <i>Este comentario no ha sido publicado en Google Maps. Ha sido enviado directamente a gerencia para resolverlo.</i>`
+        );
       }
 
       return NextResponse.json({ success: true, source: 'supabase' });

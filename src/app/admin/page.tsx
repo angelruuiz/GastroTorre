@@ -1850,6 +1850,15 @@ function AdminPageContent() {
             </div>
           </div>
         )}
+
+        {/* Admin Consumption Report Modal for Superadmin / Town Council */}
+        {showReportModal && (
+          <AdminConsumptionReportModal
+            isOpen={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            restaurants={restaurants}
+          />
+        )}
       </div>
     );
   }

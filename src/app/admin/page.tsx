@@ -802,27 +802,73 @@ function AdminPageContent() {
           {/* Preset Buttons for Quick Demo Testing */}
           <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 space-y-2.5">
             <span className="text-[10px] font-bold text-oro-400 uppercase tracking-wider block text-center">
-              ⚡ Accesos de Prueba Rápidos:
+              ⚡ Accesos de Prueba Rápidos a Paneles:
             </span>
             <div className="grid grid-cols-2 gap-2">
               <button
+                type="button"
                 onClick={() => handleQuickLogin('admin@gastrotorre.es', 'wEyzye9b')}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-torre-900/50 border border-slate-700 hover:border-torre-500 text-[11px] font-bold text-left transition-all"
+                className="p-2 rounded-xl bg-slate-800 hover:bg-amber-950/40 border border-slate-700 hover:border-amber-500/60 text-[11px] font-bold text-left transition-all group"
               >
-                <div className="text-oro-400 flex items-center gap-1">
+                <div className="text-oro-400 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                   <span>👑 Superadmin</span>
                 </div>
                 <div className="text-[9px] text-slate-400 font-mono">admin / wEyzye9b</div>
               </button>
 
               <button
+                type="button"
                 onClick={() => handleQuickLogin('jarales@gastrotorre.es', 'Jarales2026!')}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-torre-900/50 border border-slate-700 hover:border-torre-500 text-[11px] font-bold text-left transition-all"
+                className="p-2 rounded-xl bg-slate-800 hover:bg-torre-900/50 border border-slate-700 hover:border-torre-500 text-[11px] font-bold text-left transition-all group"
               >
-                <div className="text-white flex items-center gap-1">
+                <div className="text-white flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                   <span>🥩 Los Jarales</span>
                 </div>
                 <div className="text-[9px] text-slate-400 font-mono">jarales / Jarales2026!</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('latavola@gastrotorre.es', 'Tavola2026!')}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-emerald-950/40 border border-slate-700 hover:border-emerald-500/60 text-[11px] font-bold text-left transition-all group"
+              >
+                <div className="text-emerald-300 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>🍕 La Tavola</span>
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">latavola / Tavola2026!</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('olivo@gastrotorre.es', 'Olivo2026!')}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-blue-950/40 border border-slate-700 hover:border-blue-500/60 text-[11px] font-bold text-left transition-all group"
+              >
+                <div className="text-blue-300 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>🥘 Bistró El Olivo</span>
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">olivo / Olivo2026!</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('smash@gastrotorre.es', 'Smash2026!')}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-orange-950/40 border border-slate-700 hover:border-orange-500/60 text-[11px] font-bold text-left transition-all group"
+              >
+                <div className="text-orange-300 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>🍔 Torre Smash</span>
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">smash / Smash2026!</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('huerta@gastrotorre.es', 'Huerta2026!')}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-lime-950/40 border border-slate-700 hover:border-lime-500/60 text-[11px] font-bold text-left transition-all group"
+              >
+                <div className="text-lime-300 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>🥑 Café La Huerta</span>
+                </div>
+                <div className="text-[9px] text-slate-400 font-mono">huerta / Huerta2026!</div>
               </button>
             </div>
           </div>

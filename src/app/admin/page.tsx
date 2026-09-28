@@ -32,6 +32,7 @@ import {
   BarChart3, 
   FileText, 
   Flame, 
+  Snowflake,
   FolderPlus, 
   Layers, 
   Edit3, 
@@ -1383,338 +1384,623 @@ function AdminPageContent() {
         )}
 
         {/* TAB 5: SUPERADMIN GLOBAL METRICS ACROSS TORRELODONES */}
-        {adminTab === 'stats' && (
-          <div className="space-y-4">
-            <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 border border-torre-800/60 p-5 rounded-3xl shadow-soft space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
-                <div>
-                  <span className="text-[10px] font-black text-oro-400 uppercase tracking-wider block">
-                    👑 Vista de Control Maestro · Todo el Tiempo
-                  </span>
-                  <h3 className="text-base font-black text-white">
-                    Panel Histórico de Hábitos de Consumo & Big Data
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    Métricas consolidadas de la red hostelera de Torrelodones
-                  </p>
-                </div>
+        {adminTab === 'stats' && (() => {
+          const monthDataMap: Record<string, {
+            name: string;
+            subtitle: string;
+            totalScans: number;
+            totalRevenue: number;
+            totalActions: number;
+            paperSaved: number;
+            growth: string;
+            weeks: {
+              week: string;
+              scans: number;
+              revenue: number;
+              percent: number;
+              peak: string;
+              category: string;
+              isTop: boolean;
+            }[];
+            daysRanking: {
+              day: string;
+              percent: number;
+              count: number;
+              isPeak: boolean;
+              tag: string;
+            }[];
+            allergens: {
+              sinGluten: number;
+              sinLactosa: number;
+              vegano: number;
+              frutosSecos: number;
+            };
+            hourlyShifts: {
+              lunchPercent: number;
+              dinnerPercent: number;
+              afternoonPercent: number;
+              morningPercent: number;
+              hotHours: { time: string; label: string; percent: string; occupancy: string; tip: string }[];
+              coldHours: { time: string; label: string; percent: string; occupancy: string; tip: string }[];
+            };
+          }> = {
+            '2026-09': {
+              name: 'Septiembre 2026',
+              subtitle: 'Vuelta al Cole & Dinamización Otoño',
+              totalScans: 14850,
+              totalRevenue: 423225,
+              totalActions: 3980,
+              paperSaved: 16000,
+              growth: '+18.4% vs agosto',
+              weeks: [
+                { week: 'Semana 1 (1-7)', scans: 4455, revenue: 126960, percent: 100, peak: 'Sábado (Pico Nóminas)', category: 'Carnes & Brasas', isTop: true },
+                { week: 'Semana 2 (8-14)', scans: 3267, revenue: 93110, percent: 73, peak: 'Domingo (Comidas)', category: 'Arroces & Pescados', isTop: false },
+                { week: 'Semana 3 (15-21)', scans: 3118, revenue: 88875, percent: 70, peak: 'Viernes (Afterwork)', category: 'Pastas & Pizzas', isTop: false },
+                { week: 'Semana 4 (22-28)', scans: 4010, revenue: 114280, percent: 90, peak: 'Sábado Noche', category: 'Smash Burgers', isTop: false },
+              ],
+              daysRanking: [
+                { day: 'Sábado', percent: 34.2, count: 5078, isPeak: true, tag: 'Pico Máximo Sala' },
+                { day: 'Domingo', percent: 26.8, count: 3980, isPeak: true, tag: 'Pico Comidas Familiares' },
+                { day: 'Viernes', percent: 19.4, count: 2880, isPeak: false, tag: 'Pico Cenas & Grupos' },
+                { day: 'Jueves', percent: 8.1, count: 1202, isPeak: false, tag: 'Afterwork' },
+                { day: 'Miércoles', percent: 4.9, count: 727, isPeak: false, tag: 'Tráfico Regular' },
+                { day: 'Martes', percent: 3.8, count: 564, isPeak: false, tag: 'Valle — Oportunidad' },
+                { day: 'Lunes', percent: 2.8, count: 415, isPeak: false, tag: 'Cierres habituales' },
+              ],
+              allergens: { sinGluten: 38.6, sinLactosa: 24.1, vegano: 19.8, frutosSecos: 17.5 },
+              hourlyShifts: {
+                lunchPercent: 56.4,
+                dinnerPercent: 37.1,
+                afternoonPercent: 6.5,
+                morningPercent: 12.0,
+                hotHours: [
+                  { time: '14:00 - 15:30', label: 'Almuerzos & Menú del Día', percent: '39.4%', occupancy: '98% Ocupación', tip: 'Mayor ticket medio en salón y terraza.' },
+                  { time: '21:30 - 23:00', label: 'Cenas de Parejas & Grupos', percent: '28.6%', occupancy: '86% Ocupación', tip: 'Concentración masiva en fin de semana.' },
+                ],
+                coldHours: [
+                  { time: '17:00 - 19:30', label: 'Valle de Tardeo', percent: '6.5%', occupancy: '16% Ocupación', tip: 'Dinamizar con meriendas, café de especialidad y música acústica.' },
+                  { time: '12:00 - 13:00', label: 'Valle Pre-Almuerzo', percent: '5.2%', occupancy: '20% Ocupación', tip: 'Incentivar la hora del aperitivo con tapa de cortesía.' },
+                ],
+              },
+            },
+            '2026-08': {
+              name: 'Agosto 2026',
+              subtitle: 'Temporada Estival & Terrazas Nocturnas',
+              totalScans: 12540,
+              totalRevenue: 357390,
+              totalActions: 3340,
+              paperSaved: 16000,
+              growth: '+12.1% vs julio',
+              weeks: [
+                { week: 'Semana 1 (1-7)', scans: 3511, revenue: 100060, percent: 100, peak: 'Sábado Noche', category: 'Carnes & Parrilla', isTop: true },
+                { week: 'Semana 2 (8-14)', scans: 2758, revenue: 78620, percent: 78, peak: 'Domingo Mediodía', category: 'Arroces & Mariscos', isTop: false },
+                { week: 'Semana 3 (15-21)', scans: 2884, revenue: 82200, percent: 82, peak: 'Viernes Festivo', category: 'Pizzas & Tapas', isTop: false },
+                { week: 'Semana 4 (22-28)', scans: 3387, revenue: 96510, percent: 96, peak: 'Sábado Noche', category: 'Burgers & Cervezas', isTop: false },
+              ],
+              daysRanking: [
+                { day: 'Sábado', percent: 36.5, count: 4577, isPeak: true, tag: 'Pico Terraza Nocturna' },
+                { day: 'Domingo', percent: 24.2, count: 3034, isPeak: true, tag: 'Pico Comidas' },
+                { day: 'Viernes', percent: 21.0, count: 2633, isPeak: false, tag: 'Cenas Finde' },
+                { day: 'Jueves', percent: 7.5, count: 940, isPeak: false, tag: 'Cenas al Fresco' },
+                { day: 'Miércoles', percent: 4.2, count: 526, isPeak: false, tag: 'Tráfico Regular' },
+                { day: 'Martes', percent: 3.6, count: 451, isPeak: false, tag: 'Día Valle' },
+                { day: 'Lunes', percent: 3.0, count: 376, isPeak: false, tag: 'Cierres' },
+              ],
+              allergens: { sinGluten: 39.5, sinLactosa: 25.1, vegano: 17.2, frutosSecos: 18.2 },
+              hourlyShifts: {
+                lunchPercent: 44.2,
+                dinnerPercent: 49.6,
+                afternoonPercent: 6.2,
+                morningPercent: 9.5,
+                hotHours: [
+                  { time: '21:45 - 23:30', label: 'Cenas al Fresco en Terraza', percent: '42.8%', occupancy: '100% Ocupación', tip: 'Horario estelar por altas temperaturas de día.' },
+                  { time: '14:15 - 15:30', label: 'Almuerzos Interiores Climatizados', percent: '33.1%', occupancy: '74% Ocupación', tip: 'Salones con aire acondicionado.' },
+                ],
+                coldHours: [
+                  { time: '16:00 - 19:30', label: 'Horas de Calor Extremo', percent: '4.8%', occupancy: '10% Ocupación', tip: 'Poco tránsito exterior hasta la caída del sol.' },
+                  { time: '11:00 - 12:30', label: 'Apertura Matinal', percent: '6.1%', occupancy: '18% Ocupación', tip: 'Desayunos tardíos de verano.' },
+                ],
+              },
+            },
+            '2026-07': {
+              name: 'Julio 2026',
+              subtitle: 'Fiestas Patronales del Carmen & Máximo Anual',
+              totalScans: 16200,
+              totalRevenue: 461700,
+              totalActions: 4680,
+              paperSaved: 16000,
+              growth: '+24.6% vs junio',
+              weeks: [
+                { week: 'Semana 1 (1-7)', scans: 4374, revenue: 124650, percent: 96, peak: 'Sábado', category: 'Carnes a la Brasa', isTop: false },
+                { week: 'Semana 2 (8-14)', scans: 4050, revenue: 115420, percent: 89, peak: 'Viernes Noche', category: 'Arroces & Pescados', isTop: false },
+                { week: 'Semana 3 (15-21)', scans: 4536, revenue: 129270, percent: 100, peak: 'Sábado Fiestas', category: 'Tapas & Raciones', isTop: true },
+                { week: 'Semana 4 (22-28)', scans: 3240, revenue: 92360, percent: 71, peak: 'Domingo', category: 'Pizzas & Pasta', isTop: false },
+              ],
+              daysRanking: [
+                { day: 'Sábado', percent: 38.2, count: 6188, isPeak: true, tag: 'Pico Histórico Fiestas' },
+                { day: 'Viernes', percent: 23.5, count: 3807, isPeak: true, tag: 'Noches de Fiesta' },
+                { day: 'Domingo', percent: 21.0, count: 3402, isPeak: false, tag: 'Comidas Familiares' },
+                { day: 'Jueves', percent: 8.8, count: 1425, isPeak: false, tag: 'Inicio Fiestas' },
+                { day: 'Miércoles', percent: 3.9, count: 631, isPeak: false, tag: 'Tráfico Regular' },
+                { day: 'Martes', percent: 2.8, count: 453, isPeak: false, tag: 'Valle' },
+                { day: 'Lunes', percent: 1.8, count: 291, isPeak: false, tag: 'Cierres' },
+              ],
+              allergens: { sinGluten: 42.0, sinLactosa: 26.0, vegano: 21.0, frutosSecos: 11.0 },
+              hourlyShifts: {
+                lunchPercent: 48.0,
+                dinnerPercent: 45.5,
+                afternoonPercent: 6.5,
+                morningPercent: 11.2,
+                hotHours: [
+                  { time: '22:00 - 00:00', label: 'Cenas & Ambiente Fiestas', percent: '39.8%', occupancy: '100% Ocupación', tip: 'Máxima facturación nocturna del año.' },
+                  { time: '14:00 - 16:00', label: 'Comidas de Peñas & Familias', percent: '35.4%', occupancy: '94% Ocupación', tip: 'Lleno absoluto en terrazas y plazas.' },
+                ],
+                coldHours: [
+                  { time: '17:00 - 19:30', label: 'Parón Vespertino', percent: '5.2%', occupancy: '14% Ocupación', tip: 'Preparación de turnos nocturnos.' },
+                  { time: '10:00 - 12:00', label: 'Mañana Festiva', percent: '7.1%', occupancy: '22% Ocupación', tip: 'Aperitivos de peñas.' },
+                ],
+              },
+            },
+            '2026-06': {
+              name: 'Junio 2026',
+              subtitle: 'Inicio Temporada Terrazas & Graduaciones',
+              totalScans: 11400,
+              totalRevenue: 324900,
+              totalActions: 3050,
+              paperSaved: 16000,
+              growth: '+15.3% vs mayo',
+              weeks: [
+                { week: 'Semana 1 (1-7)', scans: 3192, revenue: 90970, percent: 100, peak: 'Sábado', category: 'Carnes & Asados', isTop: true },
+                { week: 'Semana 2 (8-14)', scans: 2622, revenue: 74720, percent: 82, peak: 'Viernes Cenas', category: 'Pasta Fresca & Pizza', isTop: false },
+                { week: 'Semana 3 (15-21)', scans: 2736, revenue: 77970, percent: 85, peak: 'Sábado Graduaciones', category: 'Arroces & Pescados', isTop: false },
+                { week: 'Semana 4 (22-28)', scans: 2850, revenue: 81240, percent: 89, peak: 'Noche de San Juan', category: 'Burgers & Raciones', isTop: false },
+              ],
+              daysRanking: [
+                { day: 'Sábado', percent: 33.5, count: 3819, isPeak: true, tag: 'Pico Graduaciones' },
+                { day: 'Domingo', percent: 27.2, count: 3100, isPeak: true, tag: 'Comidas Familiares' },
+                { day: 'Viernes', percent: 18.8, count: 2143, isPeak: false, tag: 'Cenas Fin de Curso' },
+                { day: 'Jueves', percent: 8.5, count: 969, isPeak: false, tag: 'Afterwork' },
+                { day: 'Miércoles', percent: 5.2, count: 592, isPeak: false, tag: 'Tráfico Regular' },
+                { day: 'Martes', percent: 4.1, count: 467, isPeak: false, tag: 'Valle' },
+                { day: 'Lunes', percent: 2.7, count: 307, isPeak: false, tag: 'Cierres' },
+              ],
+              allergens: { sinGluten: 39.0, sinLactosa: 24.8, vegano: 18.5, frutosSecos: 17.7 },
+              hourlyShifts: {
+                lunchPercent: 54.0,
+                dinnerPercent: 39.5,
+                afternoonPercent: 6.5,
+                morningPercent: 10.8,
+                hotHours: [
+                  { time: '14:00 - 15:30', label: 'Comidas Familiares de Domingo', percent: '37.5%', occupancy: '92% Ocupación', tip: 'Terrazas con sombra y salones.' },
+                  { time: '21:30 - 23:00', label: 'Cenas de Graduación & San Juan', percent: '31.2%', occupancy: '84% Ocupación', tip: 'Celebraciones de grupos juveniles.' },
+                ],
+                coldHours: [
+                  { time: '17:00 - 19:30', label: 'Valle Vespertino', percent: '6.5%', occupancy: '17% Ocupación', tip: 'Promover meriendas infantiles de fin de curso.' },
+                  { time: '12:00 - 13:00', label: 'Pre-Comida', percent: '5.8%', occupancy: '21% Ocupación', tip: 'Cañas y tapas rápidas.' },
+                ],
+              },
+            },
+          };
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowReportModal(true)}
-                    className="px-4 py-2 rounded-2xl bg-gradient-to-r from-oro-500 to-amber-500 hover:from-oro-400 hover:to-amber-400 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all active:scale-95"
-                  >
-                    <Building2 className="w-4 h-4" />
-                    <span>🏛️ Exportar Informe (Ayuntamiento)</span>
-                  </button>
-                </div>
-              </div>
+          const curMonth = monthDataMap[statsSelectedMonth] || monthDataMap['2026-09'];
 
-              {/* Top Municipality KPIs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block font-medium">Lecturas Totales QR</span>
-                  <span className="text-2xl font-black text-white block mt-0.5">
-                    {(restaurants.reduce((acc, r) => acc + (r.stats?.monthlyViews || 1280), 0) * 8).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-emerald-400 font-bold">94% Escaneos en mesa</span>
-                </div>
-
-                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block font-medium">Impacto Negocio Inducido</span>
-                  <span className="text-2xl font-black text-oro-400 block mt-0.5">
-                    +412.000 €
-                  </span>
-                  <span className="text-[10px] text-oro-300 font-bold">Ticket medio ~28,50€</span>
-                </div>
-
-                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block font-medium">Acciones Comerciales</span>
-                  <span className="text-2xl font-black text-emerald-300 block mt-0.5">
-                    {(restaurants.reduce((acc, r) => acc + (r.stats?.phoneCalls || 85) + (r.stats?.whatsappClicks || 140) + (r.stats?.directionsClicks || 90), 0) * 8).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">Llamadas, WhatsApp y GPS</span>
-                </div>
-
-                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 block font-medium">Cartas Papel Ahorradas</span>
-                  <span className="text-2xl font-black text-blue-300 block mt-0.5">
-                    ~{(restaurants.length * 3200).toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-blue-400 font-bold">Sostenibilidad & Huella Verde</span>
-                </div>
-              </div>
-
-              {/* MONTHLY TIMELINE & WEEKLY EVOLUTION CHART */}
-              <div className="bg-slate-950/90 border border-slate-800 p-4.5 rounded-2xl space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-oro-400" />
-                    <div>
-                      <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                        Evolución Temporal Mensual & Semanas (Big Data)
-                      </h4>
-                      <span className="text-[10px] text-slate-400">
-                        Desglose comparativo de comensales e impacto económico por semanas del mes
+          return (
+            <div className="space-y-5">
+              <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 border border-torre-800/60 p-5 rounded-3xl shadow-soft space-y-5">
+                
+                {/* Header & Month Selector */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black text-oro-400 uppercase tracking-wider block">
+                        👑 Control Maestro · {curMonth.name}
                       </span>
+                      <span className="text-[9px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                        {curMonth.growth}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-black text-white">
+                      Panel Histórico de Hábitos de Consumo: {curMonth.name}
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      {curMonth.subtitle} · Métricas consolidadas de la red hostelera de Torrelodones
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Interactive Month Switcher Tabs */}
+                    <div className="bg-slate-950/80 p-1 rounded-2xl border border-slate-800 flex gap-1 text-xs font-bold">
+                      {[
+                        { id: '2026-09', label: 'Septiembre 2026' },
+                        { id: '2026-08', label: 'Agosto 2026' },
+                        { id: '2026-07', label: 'Julio 2026' },
+                        { id: '2026-06', label: 'Junio 2026' },
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => setStatsSelectedMonth(m.id)}
+                          className={`px-3 py-1.5 rounded-xl transition-all ${
+                            statsSelectedMonth === m.id
+                              ? 'bg-oro-500 text-slate-950 font-black shadow-md'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                          }`}
+                        >
+                          {m.label.split(' ')[0]}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      className="px-4 py-2 rounded-2xl bg-gradient-to-r from-oro-500 to-amber-500 hover:from-oro-400 hover:to-amber-400 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all active:scale-95 shrink-0"
+                    >
+                      <Building2 className="w-4 h-4" />
+                      <span>🏛️ Exportar Informe (Ayuntamiento)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Top 4 Municipality KPIs for Selected Month */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block font-medium">Lecturas en {curMonth.name.split(' ')[0]}</span>
+                    <span className="text-2xl font-black text-white block mt-0.5">
+                      {curMonth.totalScans.toLocaleString('es-ES')}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold">{curMonth.growth}</span>
+                  </div>
+
+                  <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block font-medium">Impacto Negocio Inducido</span>
+                    <span className="text-2xl font-black text-oro-400 block mt-0.5">
+                      {curMonth.totalRevenue.toLocaleString('es-ES')} €
+                    </span>
+                    <span className="text-[10px] text-oro-300 font-bold">Ticket medio ~28,50€</span>
+                  </div>
+
+                  <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block font-medium">Acciones Comerciales</span>
+                    <span className="text-2xl font-black text-emerald-300 block mt-0.5">
+                      {curMonth.totalActions.toLocaleString('es-ES')}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">Llamadas, WhatsApp y GPS</span>
+                  </div>
+
+                  <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+                    <span className="text-[11px] text-slate-400 block font-medium">Cartas Papel Ahorradas</span>
+                    <span className="text-2xl font-black text-blue-300 block mt-0.5">
+                      ~{curMonth.paperSaved.toLocaleString('es-ES')}
+                    </span>
+                    <span className="text-[10px] text-blue-400 font-bold">Sostenibilidad & Huella Verde</span>
+                  </div>
+                </div>
+
+                {/* MONTHLY TIMELINE & WEEKLY EVOLUTION CHART */}
+                <div className="bg-slate-950/90 border border-slate-800 p-4.5 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-oro-400" />
+                      <div>
+                        <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                          Evolución Semanal de {curMonth.name}
+                        </h4>
+                        <span className="text-[10px] text-slate-400">
+                          Comportamiento semanal (Semana 1 a Semana 4) e impacto económico
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                    {[
-                      { id: '2026-09', label: 'Septiembre 2026' },
-                      { id: '2026-08', label: 'Agosto 2026' },
-                      { id: '2026-07', label: 'Julio 2026' },
-                      { id: '2026-06', label: 'Junio 2026' },
-                    ].map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => setStatsSelectedMonth(m.id)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
-                          statsSelectedMonth === m.id
-                            ? 'bg-oro-500 text-slate-950 font-black shadow'
-                            : 'bg-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {m.label}
-                      </button>
+                  {/* 4 Weekly Bars Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                    {curMonth.weeks.map((w, idx) => (
+                      <div key={idx} className={`p-3 rounded-xl border space-y-2 ${w.isTop ? 'bg-amber-950/30 border-amber-500/40' : 'bg-slate-900 border-slate-800'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-white">{w.week}</span>
+                          {w.isTop && (
+                            <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              🏆 Pico Mes
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-baseline text-xs font-mono">
+                            <span className="font-black text-white">{w.scans.toLocaleString('es-ES')} lecturas</span>
+                            <span className="text-oro-400 font-bold">{w.revenue.toLocaleString('es-ES')} €</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
+                            <div
+                              className={`h-full rounded-full ${
+                                w.isTop
+                                  ? 'bg-gradient-to-r from-oro-500 to-amber-400'
+                                  : 'bg-gradient-to-r from-torre-600 to-emerald-400'
+                              }`}
+                              style={{ width: `${w.percent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="text-[9px] text-slate-400 pt-1 border-t border-slate-800 flex justify-between">
+                          <span>Pico: <strong className="text-slate-200">{w.peak.split(' ')[0]}</strong></span>
+                          <span className="text-oro-300/90 truncate max-w-[90px]">{w.category}</span>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
 
-                {/* 4 Weekly Bars Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-                  {[
-                    {
-                      week: 'Semana 1 (1-7)',
-                      scans: statsSelectedMonth === '2026-09' ? 4455 : statsSelectedMonth === '2026-07' ? 4374 : 3511,
-                      revenue: statsSelectedMonth === '2026-09' ? 126960 : statsSelectedMonth === '2026-07' ? 124650 : 100060,
-                      percent: 100,
-                      peak: 'Sábado (Cobro Nóminas)',
-                      category: 'Carnes & Brasas',
-                      isTop: true,
-                    },
-                    {
-                      week: 'Semana 2 (8-14)',
-                      scans: statsSelectedMonth === '2026-09' ? 3267 : statsSelectedMonth === '2026-07' ? 4050 : 2758,
-                      revenue: statsSelectedMonth === '2026-09' ? 93110 : statsSelectedMonth === '2026-07' ? 115420 : 78620,
-                      percent: 73,
-                      peak: 'Domingo (Comidas Familias)',
-                      category: 'Arroces & Pescados',
-                      isTop: false,
-                    },
-                    {
-                      week: 'Semana 3 (15-21)',
-                      scans: statsSelectedMonth === '2026-09' ? 3118 : statsSelectedMonth === '2026-07' ? 4536 : 2884,
-                      revenue: statsSelectedMonth === '2026-09' ? 88875 : statsSelectedMonth === '2026-07' ? 129270 : 82200,
-                      percent: 70,
-                      peak: 'Viernes (Afterwork & Cenas)',
-                      category: 'Pastas & Pizzas',
-                      isTop: statsSelectedMonth === '2026-07',
-                    },
-                    {
-                      week: 'Semana 4 (22-28)',
-                      scans: statsSelectedMonth === '2026-09' ? 4010 : statsSelectedMonth === '2026-07' ? 3240 : 3387,
-                      revenue: statsSelectedMonth === '2026-09' ? 114280 : statsSelectedMonth === '2026-07' ? 92360 : 96510,
-                      percent: 90,
-                      peak: 'Sábado Noche',
-                      category: 'Burgers & Brunch',
-                      isTop: false,
-                    },
-                  ].map((w, idx) => (
-                    <div key={idx} className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black text-white">{w.week}</span>
-                        {w.isTop && (
-                          <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            Pico Mes
-                          </span>
-                        )}
+                {/* 2 Grid Columns: Days of Week Ranking & Allergen Radar */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  
+                  {/* DAYS OF WEEK RANKING FOR SELECTED MONTH */}
+                  <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-black text-slate-200 uppercase flex items-center gap-1.5">
+                        <BarChart3 className="w-4 h-4 text-oro-400" />
+                        <span>Mejores Días en {curMonth.name.split(' ')[0]}</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">Picos vs Valles</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      {curMonth.daysRanking.map((item) => (
+                        <div key={item.day} className="space-y-0.5">
+                          <div className="flex justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className={item.isPeak ? 'font-bold text-oro-300' : 'text-slate-300'}>{item.day}</span>
+                              <span className="text-[9px] text-slate-500">({item.tag})</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-400 text-[10px] font-mono">{item.count.toLocaleString('es-ES')} lecturas</span>
+                              <span className="font-bold text-white font-mono w-10 text-right">{item.percent}%</span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                item.isPeak
+                                  ? 'bg-gradient-to-r from-oro-500 to-amber-400'
+                                  : 'bg-gradient-to-r from-torre-600 to-blue-400'
+                              }`}
+                              style={{ width: `${item.percent * 2.5}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ALLERGEN RADAR FOR SELECTED MONTH */}
+                  <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span className="text-xs font-black text-slate-200 uppercase flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                          <span>Radar de Alérgenos: {curMonth.name.split(' ')[0]}</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-bold">Salud Pública</span>
                       </div>
 
+                      <div className="space-y-2.5 pt-2 text-xs">
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="font-bold text-amber-300">🌾 Sin Gluten (Celíacos)</span>
+                            <span className="font-mono text-white font-black">{curMonth.allergens.sinGluten}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-amber-400 h-full rounded-full" style={{ width: `${curMonth.allergens.sinGluten}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="font-bold text-blue-300">🥛 Sin Lactosa</span>
+                            <span className="font-mono text-white font-black">{curMonth.allergens.sinLactosa}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-blue-400 h-full rounded-full" style={{ width: `${curMonth.allergens.sinLactosa}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="font-bold text-emerald-300">🌱 Vegano & Vegetariano</span>
+                            <span className="font-mono text-white font-black">{curMonth.allergens.vegano}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${curMonth.allergens.vegano}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="font-bold text-red-300">🥜 Frutos Secos / Marisco</span>
+                            <span className="font-mono text-white font-black">{curMonth.allergens.frutosSecos}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-red-400 h-full rounded-full" style={{ width: `${curMonth.allergens.frutosSecos}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[10px] text-slate-300">
+                      💡 <strong>Insight Sanitario:</strong> El {curMonth.allergens.sinGluten}% de comensales busca alternativas celíacas en {curMonth.name.split(' ')[0]}.
+                    </div>
+                  </div>
+                </div>
+
+                {/* ========================================================================= */}
+                {/* 🔥❄️ NUEVA SECCIÓN: HORAS CALIENTES Y HORAS FRÍAS DE MEDIA DEL MES */}
+                {/* ========================================================================= */}
+                <div className="bg-slate-950 p-4.5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-oro-400" />
                       <div>
-                        <div className="flex justify-between items-baseline text-xs font-mono">
-                          <span className="font-black text-white">{w.scans.toLocaleString()} lecturas</span>
-                          <span className="text-oro-400 font-bold">{w.revenue.toLocaleString()} €</span>
-                        </div>
-                        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
-                          <div
-                            className={`h-full rounded-full ${
-                              w.isTop
-                                ? 'bg-gradient-to-r from-oro-500 to-amber-400'
-                                : 'bg-gradient-to-r from-torre-600 to-emerald-400'
-                            }`}
-                            style={{ width: `${w.percent}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="text-[9px] text-slate-400 pt-1 border-t border-slate-800 flex justify-between">
-                        <span>Pico: <strong className="text-slate-200">{w.peak.split(' ')[0]}</strong></span>
-                        <span className="text-oro-300/90 truncate max-w-[90px]">{w.category}</span>
+                        <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <span>Mapa de Horas Calientes 🔥 & Frías ❄️ (Media de {curMonth.name})</span>
+                        </h4>
+                        <span className="text-[10px] text-slate-400">
+                          Distribución horaria del consumo para optimización de plantillas y dinamización municipal
+                        </span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2 Grid Columns: Days of Week Ranking & Hourly Split */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                {/* DAYS OF WEEK RANKING */}
-                <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-xs font-black text-slate-200 uppercase flex items-center gap-1.5">
-                      <BarChart3 className="w-4 h-4 text-oro-400" />
-                      <span>Mejores Días de la Semana</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400">Picos vs Valles</span>
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between font-bold text-oro-300">
-                        <span>1. Sábado (Pico Máximo)</span>
-                        <span>34.2%</span>
+                  {/* 4 Shift Progress Meters */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-amber-300 font-bold">☀️ Comidas</span>
+                        <span className="font-black text-white font-mono">{curMonth.hourlyShifts.lunchPercent}%</span>
                       </div>
                       <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-oro-500 to-amber-400 h-full rounded-full" style={{ width: '85%' }} />
+                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${curMonth.hourlyShifts.lunchPercent}%` }} />
                       </div>
+                      <span className="text-[9px] text-slate-400 block">13:30 - 16:30</span>
                     </div>
 
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between font-bold text-amber-200">
-                        <span>2. Domingo (Comidas Familiares)</span>
-                        <span>26.8%</span>
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-indigo-300 font-bold">🌙 Cenas</span>
+                        <span className="font-black text-white font-mono">{curMonth.hourlyShifts.dinnerPercent}%</span>
                       </div>
                       <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style={{ width: '67%' }} />
+                        <div className="bg-indigo-400 h-full rounded-full" style={{ width: `${curMonth.hourlyShifts.dinnerPercent}%` }} />
                       </div>
+                      <span className="text-[9px] text-slate-400 block">20:30 - 23:45</span>
                     </div>
 
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between font-medium text-slate-300">
-                        <span>3. Viernes (Cenas & Grupos)</span>
-                        <span>19.4%</span>
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-blue-300 font-bold">☕ Tardeo</span>
+                        <span className="font-black text-white font-mono">{curMonth.hourlyShifts.afternoonPercent}%</span>
                       </div>
                       <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-blue-500 h-full rounded-full" style={{ width: '48%' }} />
+                        <div className="bg-blue-400 h-full rounded-full" style={{ width: `${curMonth.hourlyShifts.afternoonPercent * 4}%` }} />
+                      </div>
+                      <span className="text-[9px] text-slate-400 block">17:00 - 19:45</span>
+                    </div>
+
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-emerald-300 font-bold">🥐 Brunch</span>
+                        <span className="font-black text-white font-mono">{curMonth.hourlyShifts.morningPercent}%</span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${curMonth.hourlyShifts.morningPercent * 3}%` }} />
+                      </div>
+                      <span className="text-[9px] text-slate-400 block">09:30 - 12:30</span>
+                    </div>
+                  </div>
+
+                  {/* Hot Hours vs Cold Hours Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {/* 🔥 Horas Calientes */}
+                    <div className="p-3.5 bg-amber-950/20 border border-amber-500/30 rounded-2xl space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <Flame className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs font-black text-amber-300 uppercase tracking-wider">
+                          🔥 Horas Calientes (Picos Máximos de Consumo)
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        {curMonth.hourlyShifts.hotHours.map((h, i) => (
+                          <div key={i} className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-white">{h.time} — {h.label}</span>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                                {h.occupancy}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">{h.tip}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between font-medium text-slate-400 text-[11px]">
-                        <span>4. Jueves (8.1%) · Miércoles (4.9%) · Martes (3.8%) · Lunes (2.8%)</span>
+                    {/* ❄️ Horas Frías */}
+                    <div className="p-3.5 bg-blue-950/20 border border-blue-500/30 rounded-2xl space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <Snowflake className="w-4 h-4 text-blue-400" />
+                        <span className="text-xs font-black text-blue-300 uppercase tracking-wider">
+                          ❄️ Horas Frías (Valles con Potencial de Dinamización)
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        {curMonth.hourlyShifts.coldHours.map((c, i) => (
+                          <div key={i} className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-white">{c.time} — {c.label}</span>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-mono">
+                                {c.occupancy}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">{c.tip}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* HOURLY AND ALLERGEN RADAR */}
-                <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-xs font-black text-slate-200 uppercase flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-400" />
-                      <span>Radar de Alérgenos Acumulado</span>
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-bold">Salud Pública</span>
+                {/* Leaderboard of Restaurants for Selected Month */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                      Rendimiento de Locales en {curMonth.name}
+                    </h4>
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      className="text-[11px] text-oro-400 hover:text-oro-300 font-bold underline flex items-center gap-1"
+                    >
+                      <span>Ver dossier institucional completo</span>
+                      <ArrowUpRight className="w-3 h-3" />
+                    </button>
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-amber-300">🌾 Sin Gluten (Celíacos)</span>
-                        <span className="font-mono text-white font-black">38.6%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '38.6%' }} />
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    {restaurants.map((rest, idx) => {
+                      const baseScans = Math.round(curMonth.totalScans * (0.34 - idx * 0.06));
+                      const conv = (28.4 - idx * 1.8).toFixed(1);
+                      return (
+                        <div
+                          key={rest.id || rest.slug}
+                          className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="w-6 h-6 rounded-full bg-slate-800 text-oro-400 text-xs font-black flex items-center justify-center shrink-0 border border-slate-700">
+                              #{idx + 1}
+                            </span>
+                            <div className="truncate">
+                              <h5 className="text-xs font-black text-white truncate">{rest.name}</h5>
+                              <span className="text-[10px] text-slate-400">{rest.zone} • {rest.cuisine}</span>
+                            </div>
+                          </div>
 
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-blue-300">🥛 Sin Lactosa</span>
-                        <span className="font-mono text-white font-black">24.1%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-blue-400 h-full rounded-full" style={{ width: '24.1%' }} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-emerald-300">🌱 Vegano & Vegetariano</span>
-                        <span className="font-mono text-white font-black">19.8%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-400 h-full rounded-full" style={{ width: '19.8%' }} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-red-300">🥜 Frutos Secos / Marisco</span>
-                        <span className="font-mono text-white font-black">17.5%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-red-400 h-full rounded-full" style={{ width: '17.5%' }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Leaderboard of Restaurants */}
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider">
-                    Rendimiento por Restaurante Asociado
-                  </h4>
-                  <button
-                    onClick={() => setShowReportModal(true)}
-                    className="text-[11px] text-oro-400 hover:text-oro-300 font-bold underline flex items-center gap-1"
-                  >
-                    <span>Ver informe completo detallado</span>
-                    <ArrowUpRight className="w-3 h-3" />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  {restaurants.map((rest, idx) => {
-                    const views = (rest.stats?.monthlyViews || (1450 - idx * 220)) * 8;
-                    const conv = (28.4 - idx * 1.8).toFixed(1);
-                    return (
-                      <div
-                        key={rest.id || rest.slug}
-                        className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="w-6 h-6 rounded-full bg-slate-800 text-oro-400 text-xs font-black flex items-center justify-center shrink-0 border border-slate-700">
-                            #{idx + 1}
-                          </span>
-                          <div className="truncate">
-                            <h5 className="text-xs font-black text-white truncate">{rest.name}</h5>
-                            <span className="text-[10px] text-slate-400">{rest.zone} • {rest.cuisine}</span>
+                          <div className="flex items-center gap-4 shrink-0 text-right">
+                            <div>
+                              <span className="text-xs font-black text-white block">{baseScans.toLocaleString('es-ES')}</span>
+                              <span className="text-[9px] text-slate-400">lecturas en {curMonth.name.split(' ')[0]}</span>
+                            </div>
+                            <div>
+                              <span className="text-xs font-black text-oro-400 block">{conv}%</span>
+                              <span className="text-[9px] text-slate-400">conversión</span>
+                            </div>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-4 shrink-0 text-right">
-                          <div>
-                            <span className="text-xs font-black text-white block">{views.toLocaleString()}</span>
-                            <span className="text-[9px] text-slate-400">lecturas totales</span>
-                          </div>
-                          <div>
-                            <span className="text-xs font-black text-oro-400 block">{conv}%</span>
-                            <span className="text-[9px] text-slate-400">conversión</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* PASSWORD RESET MODAL */}
         {editingUserId && (

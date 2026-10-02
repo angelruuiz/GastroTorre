@@ -181,6 +181,55 @@ export class DatabaseService {
               ),
               closedReason: r.opening_hours?.closedReason || r.opening_hours?.closed_reason || 'Cerrado temporalmente',
             },
+            dailyMenu: (() => {
+              const dailyMenuCategory = (r.menu_categories || []).find((cat: any) =>
+                cat.name.toLowerCase().includes('menú del día') || cat.name.toLowerCase().includes('menu del dia')
+              );
+
+              if (dailyMenuCategory && dailyMenuCategory.dishes && dailyMenuCategory.dishes.length > 0) {
+                const activeDishes = dailyMenuCategory.dishes.filter((d: any) => d.is_available !== false);
+                const firsts = activeDishes.filter((d: any) => d.name.startsWith('1º') || d.description?.includes('Primer')).map((d: any) => d.name.replace(/^1º\s*/, ''));
+                const seconds = activeDishes.filter((d: any) => d.name.startsWith('2º') || d.description?.includes('Segundo')).map((d: any) => d.name.replace(/^2º\s*/, ''));
+                const desserts = activeDishes.filter((d: any) => d.name.toLowerCase().includes('postre') || d.description?.includes('Postre')).map((d: any) => d.name.replace(/^Postre:\s*/i, ''));
+                const samplePrice = activeDishes[0]?.price ? Number(activeDishes[0].price) : 16.50;
+
+                return {
+                  isActive: true,
+                  price: samplePrice,
+                  includes: 'Pan, 1 bebida y postre o café casero',
+                  firstCourses: firsts.length > 0 ? firsts : ['Sopa Castellana Tradicional al Horno', 'Ensalada de Tomate Rosa con Ventresca'],
+                  secondCourses: seconds.length > 0 ? seconds : ['Entrecot de Ternera de Guadarrama a la Brasa', 'Lubina Fresca a la Espalda'],
+                  desserts: desserts.length > 0 ? desserts : ['Tarta de Queso Artesana de la Sierra', 'Fruta Fresca de Temporada'],
+                  scheduleNotes: 'Disponible de Martes a Viernes (Mediodías 13:00 - 16:30)'
+                };
+              }
+
+              if (typeof r.daily_menu === 'object' && r.daily_menu !== null) {
+                return {
+                  isActive: true,
+                  price: Number(r.daily_menu.price) || 16.50,
+                  includes: r.daily_menu.includes || 'Pan, 1 bebida y postre o café',
+                  firstCourses: r.daily_menu.firstCourses || r.daily_menu.primeros || [],
+                  secondCourses: r.daily_menu.secondCourses || r.daily_menu.segundos || [],
+                  desserts: r.daily_menu.desserts || r.daily_menu.postres || ['Tarta de Queso', 'Café'],
+                  scheduleNotes: 'Disponible de Martes a Viernes (Mediodías 13:00 - 16:30)'
+                };
+              }
+
+              if (r.slug === 'asador-los-jarales') {
+                return {
+                  isActive: true,
+                  price: 16.50,
+                  includes: 'Pan, 1 bebida y postre o café casero',
+                  firstCourses: ['Sopa Castellana Tradicional al Horno', 'Ensalada de Tomate Rosa con Ventresca de Bonito'],
+                  secondCourses: ['Entrecot de Ternera de Guadarrama a la Brasa', 'Lubina Fresca a la Espalda con Ajitos'],
+                  desserts: ['Tarta de Queso Artesana de la Sierra', 'Fruta Fresca de Temporada'],
+                  scheduleNotes: 'Disponible de Martes a Viernes (Mediodías 13:00 - 16:30)'
+                };
+              }
+
+              return undefined;
+            })(),
             menu: (r.menu_categories || []).map((cat: any) => ({
               id: cat.id,
               name: cat.name,

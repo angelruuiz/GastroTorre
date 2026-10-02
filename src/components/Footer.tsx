@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, MapPin, Store, UserPlus } from 'lucide-react';
 import { JoinGastroTorreModal } from './JoinGastroTorreModal';
@@ -14,34 +13,34 @@ export const Footer: React.FC = () => {
 
   return (
     <>
-      <footer className="bg-slate-950 text-white mt-12 border-t border-slate-800">
+      <footer className="bg-[#111111] text-white mt-12 border-t border-[#232323]">
         <div className="max-w-md mx-auto px-4 py-8 text-center space-y-6">
-          {/* Pitch for new restaurants - Hidden inside Admin Panel */}
+          {/* Pitch for new restaurants */}
           {!isAdminPage && (
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 border border-slate-700/80 shadow-lg text-left space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-torre-500/20 text-oro-400">
-                  <Store className="w-5 h-5" />
-                </span>
+            <div className="p-5 rounded-3xl bg-[#232323] border border-[#FFCC00]/30 shadow-xl text-left space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-[#FFCC00] flex items-center justify-center p-1 shrink-0 shadow-md">
+                  <img src="/gastrotorre_logo_negro.png" alt="GastroTorre" className="w-full h-full object-contain" />
+                </div>
                 <div>
-                  <h4 className="text-sm font-black text-white">¿Tienes un restaurante en Torrelodones?</h4>
-                  <p className="text-[10px] text-oro-300 font-bold uppercase tracking-wider">
-                    Digitalización en 24h • Sin Permanencias
+                  <h4 className="text-sm font-black text-white">¿Tienes un bar o restaurante en Torrelodones?</h4>
+                  <p className="text-[10px] text-[#FFCC00] font-bold uppercase tracking-wider">
+                    Digitalización en 48h • 0% Comisiones
                   </p>
                 </div>
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                Consigue tu código QR inmutable para mesas, actualiza precios al instante y atrae a miles de vecinos y visitantes.
+                Cartas digitales por QR, ficha centralizada en el buscador del pueblo y gestión automática por Telegram con IA.
               </p>
 
               <div className="pt-1">
                 <button
                   onClick={() => setIsJoinOpen(true)}
-                  className="w-full py-3 px-4 rounded-2xl bg-torre-600 hover:bg-torre-500 text-white text-xs font-black shadow-md shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 text-center"
+                  className="w-full py-3 px-4 rounded-2xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black shadow-lg shadow-[#FFCC00]/25 transition-all active:scale-95 flex items-center justify-center gap-2 text-center"
                 >
-                  <UserPlus className="w-4 h-4 text-oro-300" />
-                  <span>Solicitar Alta de mi Restaurante ✨</span>
+                  <UserPlus className="w-4 h-4 text-[#111111]" />
+                  <span>Unir mi Restaurante a GastroTorre ✨</span>
                 </button>
               </div>
             </div>
@@ -49,20 +48,20 @@ export const Footer: React.FC = () => {
 
           {/* Local Torrelodones Badge */}
           <div className="flex flex-col items-center justify-center space-y-2 text-xs text-slate-400">
-            <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-              <MapPin className="w-4 h-4 text-torre-400" />
-              <span>Torrelodones Pueblo & Torrelodones Colonia (Madrid)</span>
+            <div className="flex items-center gap-1.5 text-slate-200 font-bold">
+              <MapPin className="w-4 h-4 text-[#FFCC00]" />
+              <span>Digitalizando y uniendo la hostelería de Torrelodones</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Impulsando el comercio y la hostelería local con tecnología rápida y accesible.
+            <p className="text-[11px] text-[#888888]">
+              Un pueblo, un buscador. Toda la oferta gastronómica de Torrelodones bajo un mismo techo digital.
             </p>
           </div>
 
           {/* Copyright */}
-          <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-center gap-1">
+          <div className="pt-4 border-t border-[#232323] text-[11px] text-[#888888] flex items-center justify-center gap-1">
             <span>Hecho con</span>
-            <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 inline" />
-            <span>para la hostelería de Torrelodones © {new Date().getFullYear()}</span>
+            <Heart className="w-3.5 h-3.5 text-[#FFCC00] fill-[#FFCC00] inline" />
+            <span>para los hosteleros de Torrelodones © 2026</span>
           </div>
         </div>
       </footer>

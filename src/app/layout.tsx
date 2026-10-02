@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   applicationName: 'GastroTorre',
   title: 'GastroTorre | Guía Gastronómica y Cartas Digitales de Torrelodones',
   description: 'Descubre los mejores restaurantes de Torrelodones (Pueblo y Colonia). Consulta sus cartas digitales con precios, fotos, alérgenos y reserva en 1 clic.',
-  keywords: ['Torrelodones', 'Restaurantes Torrelodones', 'Dónde comer Torrelodones', 'Carta digital Torrelodones', 'GastroTorre', 'Torre a la Carta'],
+  keywords: ['Torrelodones', 'Restaurantes Torrelodones', 'Dónde comer Torrelodones', 'Carta digital Torrelodones', 'GastroTorre', 'Hostelería Torrelodones'],
   authors: [{ name: 'GastroTorre' }],
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -19,13 +19,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.png', type: 'image/png' },
-      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/gastrotorre_logo_amarillo.png', type: 'image/png' },
+      { url: '/gastrotorre_logo.png', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: '/favicon.png',
+    shortcut: '/gastrotorre_logo_amarillo.png',
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/gastrotorre_logo_amarillo.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   openGraph: {
@@ -36,7 +35,7 @@ export const metadata: Metadata = {
     siteName: 'GastroTorre',
     images: [
       {
-        url: '/logo-gastrotorre.png',
+        url: '/gastrotorre_logo.png',
         width: 1024,
         height: 1024,
         alt: 'GastroTorre - Guía Gastronómica y Cartas Digitales de Torrelodones',
@@ -47,7 +46,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'GastroTorre — Guía Gastronómica de Torrelodones',
     description: 'Cartas digitales, fotos, precios actualizados y reservas directas de los restaurantes de Torrelodones.',
-    images: ['/logo-gastrotorre.png'],
+    images: ['/gastrotorre_logo.png'],
   },
 };
 
@@ -59,7 +58,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+    { media: '(prefers-color-scheme: dark)', color: '#111111' },
   ],
 };
 
@@ -70,10 +69,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className="scroll-smooth">
-      <body className="bg-slate-100 dark:bg-slate-950 flex flex-col min-h-screen">
+      <body className="bg-slate-50 dark:bg-[#111111] flex flex-col min-h-screen">
         <RestaurantProvider>
           {/* Mobile phone frame container for ultra clean presentation */}
-          <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 min-h-screen shadow-xl flex flex-col relative border-x border-slate-200/60 dark:border-slate-800">
+          <div className="w-full max-w-md mx-auto bg-white dark:bg-[#111111] min-h-screen shadow-xl flex flex-col relative border-x border-slate-200/60 dark:border-[#232323]">
             <Navbar />
             <main className="flex-1 pb-10">{children}</main>
             <Footer />

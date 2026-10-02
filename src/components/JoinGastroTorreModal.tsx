@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Store, Check, Sparkles, MessageCircle, Send, ShieldCheck, Zap } from 'lucide-react';
+import { X, Store, Check, MessageCircle, Send, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { DatabaseService } from '@/lib/database/dbService';
 
@@ -17,6 +17,7 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [zone, setZone] = useState('Torrelodones Pueblo');
+  const [selectedPlan, setSelectedPlan] = useState('Plan Pro Hostelero (59€/mes)');
   const [cuisine, setCuisine] = useState('');
 
   if (!isOpen) return null;
@@ -29,7 +30,7 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
         contactName: owner,
         phone,
         email: email || `${phone.replace(/\s+/g, '')}@lead.gastrotorre.es`,
-        plan: 'Plan Pro (59€/mes)',
+        plan: selectedPlan,
         zone,
       });
 
@@ -37,6 +38,7 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
+        colors: ['#FFCC00', '#111111', '#10b981']
       });
     } catch (err) {
       console.warn('Error saving lead to database:', err);
@@ -46,16 +48,16 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
   };
 
   const handleWhatsAppDirect = () => {
-    const text = `¡Hola GastroTorre! Quiero dar de alta mi restaurante en la plataforma:\n\n• *Restaurante:* ${name || 'Mi Restaurante'}\n• *Contacto:* ${owner || 'Encargado'}\n• *Teléfono:* ${phone || 'Móvil'}\n• *Zona:* ${zone}\n• *Cocina:* ${cuisine || 'Especialidades'}\n\n¿Cuáles son los siguientes pasos?`;
+    const text = `¡Hola GastroTorre! Quiero dar de alta mi restaurante en la plataforma:\n\n• *Restaurante:* ${name || 'Mi Restaurante'}\n• *Contacto:* ${owner || 'Encargado'}\n• *Teléfono:* ${phone || 'Móvil'}\n• *Zona:* ${zone}\n• *Plan:* ${selectedPlan}\n• *Cocina:* ${cuisine || 'Especialidades'}\n\n¿Cuáles son los siguientes pasos?`;
     window.open(`https://wa.me/34612345678?text=${encodeURIComponent(text)}`, '_blank');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-scaleUp max-h-[92vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-br from-torre-950 via-slate-900 to-slate-800 p-5 text-white relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-sm bg-white dark:bg-[#111111] rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-[#232323] animate-scaleUp max-h-[92vh] overflow-y-auto">
+        {/* Header con círculo amarillo oficial */}
+        <div className="bg-[#111111] p-5 text-white relative border-b border-[#232323]">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -63,20 +65,20 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2 mb-2">
-            <span className="p-1.5 rounded-xl bg-torre-600 text-white">
-              <Store className="w-4 h-4" />
-            </span>
-            <span className="text-[10px] uppercase font-bold text-oro-400 tracking-wider">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-8 h-8 rounded-xl bg-[#FFCC00] flex items-center justify-center p-1 shrink-0">
+              <img src="/gastrotorre_logo_negro.png" alt="GastroTorre" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[#FFCC00] tracking-wider">
               Hostelería de Torrelodones
             </span>
           </div>
 
           <h3 className="text-lg font-black text-white leading-tight">
-            Digitaliza tu Restaurante en <span className="text-oro-400">24 Horas</span>
+            Digitaliza tu Restaurante en <span className="text-[#FFCC00]">48 Horas</span>
           </h3>
           <p className="text-xs text-slate-300 mt-1">
-            Únete a la guía oficial de Torrelodones, consigue tu código QR para mesas y atrae a más clientes.
+            Cero esfuerzo para el hostelero: nosotros hacemos el trabajo técnico; tú solo cocinas.
           </p>
         </div>
 
@@ -87,9 +89,9 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
               <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
                 <Check className="w-8 h-8" />
               </div>
-              <h4 className="text-base font-black text-slate-900">¡Solicitud Recibida en la Base de Datos!</h4>
-              <p className="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto">
-                Nos pondremos en contacto contigo en menos de 24h para digitalizar tu carta y entregarte tus códigos QR listos.
+              <h4 className="text-base font-black text-slate-900 dark:text-white">¡Solicitud Recibida con Éxito!</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-xs mx-auto">
+                Nos pondremos en contacto contigo en menos de 48h para digitalizar tu carta y entregarte tus códigos QR oficiales.
               </p>
               <button
                 onClick={handleWhatsAppDirect}
@@ -102,75 +104,77 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Promo badge */}
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-950">
-                <Zap className="w-4 h-4 text-oro-500 shrink-0" />
-                <span>🎁 Promo Lanzamiento: 2 Meses Gratis sin permanencia</span>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FFCC00]/15 border border-[#FFCC00]/30 text-xs font-bold text-[#111111] dark:text-[#FFCC00]">
+                <Zap className="w-4 h-4 text-[#FFCC00] shrink-0 fill-[#FFCC00]" />
+                <span>🎁 0% Comisiones sobre ventas • Cuota plana fija</span>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nombre del Restaurante / Bar *</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre del Bar / Restaurante *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej: Mesón El Guadarrama"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#232323] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCC00]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nombre de Contacto (Dueño/Encargado) *</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre de Contacto (Dueño/Encargado) *</label>
                 <input
                   type="text"
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
                   placeholder="Ej: Carlos Gómez"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#232323] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCC00]"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp *</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono / WhatsApp *</label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="612 34 56 78"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#232323] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCC00]"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Zona</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Plan de Interés</label>
                   <select
-                    value={zone}
-                    onChange={(e) => setZone(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
+                    value={selectedPlan}
+                    onChange={(e) => setSelectedPlan(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#232323] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-[#FFCC00] focus:outline-none focus:ring-2 focus:ring-[#FFCC00]"
                   >
-                    <option value="Torrelodones Pueblo">Torrelodones Pueblo</option>
-                    <option value="Torrelodones Colonia">Torrelodones Colonia</option>
+                    <option value="Plan Pro Hostelero (59€/mes)">Plan Pro (59€/m) ⭐</option>
+                    <option value="Plan Esencial (35€/mes)">Plan Esencial (35€/m)</option>
+                    <option value="Servicio VIP Completo (89€/mes)">Servicio VIP (89€/m)</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Comida / Especialidad</label>
-                <input
-                  type="text"
-                  value={cuisine}
-                  onChange={(e) => setCuisine(e.target.value)}
-                  placeholder="Ej: Carnes a la brasa, Tapas, Pizzería..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-torre-500"
-                />
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Zona</label>
+                <select
+                  value={zone}
+                  onChange={(e) => setZone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#232323] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCC00]"
+                >
+                  <option value="Torrelodones Pueblo">Torrelodones Pueblo</option>
+                  <option value="Torrelodones Colonia">Torrelodones Colonia</option>
+                </select>
               </div>
 
               <div className="pt-2 space-y-2">
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-2xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  className="w-full py-3.5 rounded-2xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black shadow-lg shadow-[#FFCC00]/25 transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Enviar Solicitud de Alta</span>
@@ -179,9 +183,9 @@ export const JoinGastroTorreModal: React.FC<JoinGastroTorreModalProps> = ({ isOp
                 <button
                   type="button"
                   onClick={handleWhatsAppDirect}
-                  className="w-full py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                  className="w-full py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Solicitar directo por WhatsApp</span>
                 </button>
               </div>

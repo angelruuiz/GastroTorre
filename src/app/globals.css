@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased min-h-screen selection:bg-torre-200 selection:text-torre-900;
+    @apply bg-slate-50 text-[#111111] dark:bg-[#111111] dark:text-slate-100 antialiased min-h-screen selection:bg-[#FFCC00] selection:text-[#111111];
   }
 }
 
@@ -33,4 +33,10 @@
 
 .animate-scaleUp {
   animation: scaleUp 0.2s ease-out forwards;
+}
+
+.badge-yellow {
+  background-color: #FFCC00;
+  color: #111111;
+  font-weight: 800;
 }

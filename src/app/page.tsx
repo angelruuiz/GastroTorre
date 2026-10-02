@@ -11,14 +11,10 @@ import {
   MessageCircle, 
   ArrowRight, 
   Clock, 
-  Flame, 
   UtensilsCrossed,
-  Building2,
-  Users
 } from 'lucide-react';
 import { FeaturedWeeklyBanner } from '@/components/FeaturedWeeklyBanner';
 import { getOpenStatus } from '@/utils/schedule';
-import { Restaurant } from '@/data/restaurants';
 
 type FilterCategory = 'todos' | 'carnes' | 'italiana' | 'mediterranea' | 'burgers' | 'brunch' | 'terraza' | 'celiacos';
 type ZoneFilter = 'todas' | 'pueblo' | 'colonia';
@@ -39,7 +35,6 @@ export default function HomePage() {
       const savedScroll = sessionStorage.getItem('gastrotorre_home_scroll');
       if (savedScroll) {
         const targetY = Number(savedScroll);
-        // Instant restore after layout tick
         const timeout = setTimeout(() => {
           window.scrollTo({ top: targetY, behavior: 'instant' });
         }, 60);
@@ -57,17 +52,14 @@ export default function HomePage() {
     }
   }, []);
 
-  // Helper to normalize strings removing accents/tildes
   const normalizeText = (text: string) =>
     text ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
 
-  // Random shuffle state for equal visibility across all restaurants on every refresh
   const [shuffledIds, setShuffledIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (restaurants.length > 0) {
       const ids = restaurants.map((r) => r.id);
-      // Fisher-Yates random shuffle algorithm
       for (let i = ids.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [ids[i], ids[j]] = [ids[j], ids[i]];
@@ -76,27 +68,22 @@ export default function HomePage() {
     }
   }, [restaurants.length]);
 
-  // Count currently open restaurants
   const openCount = useMemo(() => {
     return restaurants.filter((r) => getOpenStatus(r.schedule).isOpen).length;
   }, [restaurants]);
 
-  // Filter logic with equitable random shuffle ordering
   const filteredRestaurants = useMemo(() => {
     const normalizedQuery = normalizeText(searchTerm);
 
     const filtered = restaurants.filter((r) => {
-      // Open now filter
       if (onlyOpenNow) {
         const status = getOpenStatus(r.schedule);
         if (!status.isOpen) return false;
       }
 
-      // Zone filter
       if (selectedZone === 'pueblo' && !normalizeText(r.zone).includes('pueblo')) return false;
       if (selectedZone === 'colonia' && !normalizeText(r.zone).includes('colonia')) return false;
 
-      // Search term matching
       if (normalizedQuery) {
         const matchesSearch =
           normalizeText(r.name).includes(normalizedQuery) ||
@@ -115,7 +102,6 @@ export default function HomePage() {
         if (!matchesSearch) return false;
       }
 
-      // Category filter
       if (selectedFilter === 'todos') return true;
       if (selectedFilter === 'terraza') {
         return (r.features || []).some((f) => normalizeText(f).includes('terraza'));
@@ -127,7 +113,6 @@ export default function HomePage() {
       return r.category === selectedFilter;
     });
 
-    // Apply client-side random shuffle order if no active search query
     if (!normalizedQuery && shuffledIds.length > 0) {
       return [...filtered].sort((a, b) => {
         const indexA = shuffledIds.indexOf(a.id);
@@ -151,7 +136,6 @@ export default function HomePage() {
     { id: 'celiacos', label: '🌾 Sin Gluten' },
   ];
 
-  // Schema.org JSON-LD LocalBusiness directory data for Google & GEO
   const schemaData = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -188,12 +172,15 @@ export default function HomePage() {
       />
 
       {/* Hero Search Section */}
-      <section className="bg-gradient-to-b from-torre-50/80 via-white to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 px-4 pt-5 pb-1">
+      <section className="bg-gradient-to-b from-[#FFCC00]/10 via-white to-white dark:from-[#232323]/50 dark:via-[#111111] dark:to-[#111111] px-4 pt-5 pb-1">
         <div className="text-center space-y-1.5 mb-3">
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            ¿Dónde comer hoy en <span className="text-torre-600">Torrelodones</span>?
+          <div className="inline-block px-3 py-1 rounded-full bg-[#FFCC00]/20 text-[#111111] dark:text-[#FFCC00] text-[10px] font-black uppercase tracking-wider mb-1 border border-[#FFCC00]/40">
+            Directorio Oficial de Torrelodones
+          </div>
+          <h1 className="text-2xl font-black text-[#111111] dark:text-white tracking-tight leading-tight">
+            ¿Dónde comer hoy en <span className="text-[#FFCC00] bg-[#111111] px-2 py-0.5 rounded-lg inline-block">Torrelodones</span>?
           </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xs mx-auto">
+          <p className="text-xs text-[#555555] dark:text-slate-400 max-w-xs mx-auto">
             Cartas digitales con precios actualizados y fotos reales
           </p>
         </div>
@@ -205,7 +192,7 @@ export default function HomePage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por restaurante, plato (chuletón, pizza, smash...)"
-            className="w-full pl-10 pr-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-medium text-slate-800 dark:text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-torre-500 focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="w-full pl-10 pr-8 py-3 bg-white dark:bg-[#232323] border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-medium text-slate-800 dark:text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FFCC00] focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
           {searchTerm && (
@@ -219,12 +206,12 @@ export default function HomePage() {
         </div>
 
         {/* Zone Selector: Pueblo vs Colonia */}
-        <div className="mt-3 flex items-center justify-between bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-xl text-[11px] font-bold">
+        <div className="mt-3 flex items-center justify-between bg-slate-100/90 dark:bg-[#232323] p-1 rounded-xl text-[11px] font-bold">
           <button
             onClick={() => setSelectedZone('todas')}
             className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
               selectedZone === 'todas'
-                ? 'bg-torre-600 text-white shadow-sm font-black'
+                ? 'bg-[#FFCC00] text-[#111111] shadow-sm font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -234,7 +221,7 @@ export default function HomePage() {
             onClick={() => setSelectedZone('pueblo')}
             className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
               selectedZone === 'pueblo'
-                ? 'bg-torre-600 text-white shadow-sm font-black'
+                ? 'bg-[#FFCC00] text-[#111111] shadow-sm font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -244,7 +231,7 @@ export default function HomePage() {
             onClick={() => setSelectedZone('colonia')}
             className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
               selectedZone === 'colonia'
-                ? 'bg-torre-600 text-white shadow-sm font-black'
+                ? 'bg-[#FFCC00] text-[#111111] shadow-sm font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -273,8 +260,8 @@ export default function HomePage() {
               onClick={() => setSelectedFilter(cat.id as FilterCategory)}
               className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 ${
                 selectedFilter === cat.id
-                  ? 'bg-torre-600 text-white font-black shadow-md border-2 border-torre-500 scale-105'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
+                  ? 'bg-[#FFCC00] text-[#111111] font-black shadow-md border-2 border-[#FFCC00] scale-105'
+                  : 'bg-slate-100 dark:bg-[#232323] text-[#111111] dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {cat.label}
@@ -283,7 +270,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FEATURED RESTAURANT OF THE WEEK BANNER (Solo visible en 'Todo Torrelodones') */}
+      {/* FEATURED RESTAURANT OF THE WEEK BANNER */}
       {selectedZone === 'todas' && !searchTerm && !onlyOpenNow && (
         <section className="px-4">
           <FeaturedWeeklyBanner restaurants={restaurants} />
@@ -297,7 +284,7 @@ export default function HomePage() {
             <h2 className="text-sm font-black text-slate-900 dark:text-white tracking-tight uppercase">
               Restaurantes Disponibles
             </h2>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-[#FFCC00]/20 text-[#111111] dark:text-[#FFCC00] text-[11px] font-black border border-[#FFCC00]/30">
               {filteredRestaurants.length}
             </span>
           </div>
@@ -308,7 +295,7 @@ export default function HomePage() {
         </div>
 
         {filteredRestaurants.length === 0 ? (
-          <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+          <div className="p-8 text-center bg-slate-50 dark:bg-[#232323]/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
             <UtensilsCrossed className="w-8 h-8 text-slate-400 mx-auto mb-2" />
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No encontramos ningún restaurante con esos filtros</p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Prueba con otra búsqueda, cambia de zona o desactiva 'Abiertos Ahora'</p>
@@ -319,7 +306,7 @@ export default function HomePage() {
                 setSelectedZone('todas');
                 setOnlyOpenNow(false);
               }}
-              className="mt-3 px-4 py-2 rounded-xl bg-torre-600 text-white text-xs font-bold shadow-md shadow-blue-500/20"
+              className="mt-3 px-4 py-2 rounded-xl bg-[#FFCC00] text-[#111111] text-xs font-black shadow-md shadow-[#FFCC00]/25"
             >
               Restablecer filtros
             </button>
@@ -332,7 +319,7 @@ export default function HomePage() {
               return (
                 <div
                   key={restaurant.id}
-                  className="bg-white dark:bg-slate-850 dark:bg-slate-800/90 rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 shadow-soft hover:shadow-float transition-all duration-200 group"
+                  className="bg-white dark:bg-[#232323] rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 shadow-soft hover:shadow-float transition-all duration-200 group"
                 >
                   {/* Clickable Image Header */}
                   <Link
@@ -346,10 +333,10 @@ export default function HomePage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"></div>
 
-                    {/* Top Badges (Rating on Left, Real-Time Status on Right) */}
+                    {/* Top Badges */}
                     <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                      <span className="px-2.5 py-1 rounded-full bg-white/95 dark:bg-slate-900/90 backdrop-blur-md text-[11px] font-black text-slate-900 dark:text-white shadow-md flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span className="px-2.5 py-1 rounded-full bg-white/95 dark:bg-[#111111]/90 backdrop-blur-md text-[11px] font-black text-slate-900 dark:text-white shadow-md flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 text-[#FFCC00] fill-[#FFCC00]" />
                         <span>{restaurant.rating}</span>
                         <span className="text-slate-400 font-normal">({restaurant.reviewCount})</span>
                       </span>
@@ -371,12 +358,12 @@ export default function HomePage() {
 
                     {/* Bottom Image Info */}
                     <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-oro-300 mb-0.5">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#FFCC00] mb-0.5">
                         <span>{restaurant.cuisine}</span>
                         <span>•</span>
                         <span className="text-white bg-white/20 px-1.5 py-0.2 rounded font-black">{restaurant.priceLevel}</span>
                       </div>
-                      <h3 className="text-lg font-black leading-tight drop-shadow-sm group-hover/img:text-oro-300 transition-colors">
+                      <h3 className="text-lg font-black leading-tight drop-shadow-sm group-hover/img:text-[#FFCC00] transition-colors">
                         {restaurant.name}
                       </h3>
                     </div>
@@ -390,8 +377,8 @@ export default function HomePage() {
 
                     {/* Meta info row */}
                     <div className="flex flex-wrap items-center gap-y-1.5 gap-x-2 text-[11px]">
-                      <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-bold bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <MapPin className="w-3.5 h-3.5 text-torre-600 shrink-0" />
+                      <div className="flex items-center gap-1 text-slate-800 dark:text-slate-200 font-bold bg-[#FFCC00]/10 dark:bg-[#FFCC00]/20 px-2 py-0.5 rounded-lg border border-[#FFCC00]/30">
+                        <MapPin className="w-3.5 h-3.5 text-[#FFCC00] shrink-0" />
                         <span>{restaurant.zone}</span>
                       </div>
 
@@ -406,7 +393,7 @@ export default function HomePage() {
                       {restaurant.features.slice(0, 3).map((feat, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-0.5 rounded-md bg-torre-50 dark:bg-torre-950/60 text-torre-800 dark:text-torre-200 text-[10px] font-semibold border border-torre-100 dark:border-torre-800/40"
+                          className="px-2 py-0.5 rounded-md bg-[#F4F4F2] dark:bg-[#111111] text-[#111111] dark:text-slate-200 text-[10px] font-semibold border border-slate-200 dark:border-slate-700"
                         >
                           {feat}
                         </span>
@@ -428,7 +415,7 @@ export default function HomePage() {
                                 sessionStorage.setItem('gastrotorre_home_scroll', String(window.scrollY));
                               }
                             }}
-                            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all text-center"
+                            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black shadow-md shadow-[#FFCC00]/20 active:scale-95 transition-all text-center"
                           >
                             <span>Ver Carta Digital</span>
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -447,7 +434,7 @@ export default function HomePage() {
                           ) : hasPhone ? (
                             <a
                               href={`tel:${restaurant.phone.replace(/[^0-9+]/g, '')}`}
-                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 active:scale-95 transition-all"
+                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-[#111111] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 active:scale-95 transition-all"
                             >
                               <Phone className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                               <span>Llamar</span>

@@ -8,43 +8,55 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Nueva Paleta Oficial GastroTorre 2026
+        gastrotorre: {
+          yellow: '#FFCC00', // Amarillo GastroTorre Oficial (Pantone 116 C)
+          black: '#111111',  // Negro de marca oficial
+          white: '#FFFFFF',  // Blanco de apoyo
+          grayLight: '#F4F4F2', // Tarjetas sobre blanco
+          grayDark: '#232323',  // Tarjetas sobre negro
+          grayText: '#555555',  // Subtítulos y descripciones
+          grayFooter: '#888888' // Pies de página
+        },
+        // Alias de compatibilidad visual con la nueva paleta
         torre: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#1d4ed8', // Azul Azur de Torrelodones
-          700: '#1e40af',
-          800: '#1e3a8a',
-          900: '#172554',
-          950: '#0f172a',
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#FFCC00', // Amarillo GastroTorre
+          600: '#e6b800',
+          700: '#cc9900',
+          800: '#111111', // Negro de marca
+          900: '#111111',
+          950: '#0b0f19',
         },
         oro: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          200: '#fef08a',
-          300: '#fde047',
-          400: '#facc15',
-          500: '#eab308', // Amarillo Oro de Torrelodones
-          600: '#ca8a04',
-          700: '#a16207',
-          800: '#854d0e',
-          900: '#713f12',
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#FFCC00',
+          500: '#FFCC00', // Amarillo GastroTorre Oficial
+          600: '#e6b800',
+          700: '#cc9900',
+          800: '#111111',
+          900: '#111111',
         },
         dark: {
-          900: '#0a0f1d',
-          800: '#131e36',
-          700: '#1e293b',
+          900: '#111111', // Negro de marca oficial
+          800: '#1e1e1e',
+          700: '#232323', // Gris oscuro oficial
         }
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Arial', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       boxShadow: {
         'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
         'float': '0 10px 30px -4px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.06)',
+        'gt-yellow': '0 10px 25px rgba(255, 204, 0, 0.35)',
       }
     },
   },

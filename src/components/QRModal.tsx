@@ -52,8 +52,8 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
         ctx.roundRect(0, 0, 600, 780, 30);
         ctx.fill();
 
-        // Top Header - Torrelodones Blue
-        ctx.fillStyle = '#1d4ed8';
+        // Top Header - GastroTorre Black
+        ctx.fillStyle = '#111111';
         ctx.fillRect(0, 0, 600, 140);
 
         // Header Title
@@ -63,11 +63,11 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
         ctx.fillText(restaurant.name.toUpperCase(), 300, 65);
 
         ctx.font = 'bold 16px sans-serif';
-        ctx.fillStyle = '#fde047'; // Oro
+        ctx.fillStyle = '#FFCC00'; // GastroTorre Yellow Oficial
         ctx.fillText('GASTROTORRE • CARTA DIGITAL OFICIAL', 300, 105);
 
         // Subtitle
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#111111';
         ctx.font = 'bold 24px sans-serif';
         ctx.fillText('Escanea para ver la Carta 📖', 300, 195);
 
@@ -75,20 +75,20 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
         ctx.drawImage(img, 150, 225, 300, 300);
 
         // Under QR Branding
-        ctx.fillStyle = '#1d4ed8';
+        ctx.fillStyle = '#111111';
         ctx.font = 'bold 22px sans-serif';
         ctx.fillText('Proporcionado por GastroTorre', 300, 565);
 
-        ctx.fillStyle = '#64748b';
+        ctx.fillStyle = '#555555';
         ctx.font = '16px sans-serif';
         ctx.fillText('Cartas Digitales de Torrelodones • Sin descargas', 300, 595);
 
         // Bottom border bar
-        ctx.fillStyle = '#f1f5f9';
-        ctx.fillRect(40, 635, 520, 2);
+        ctx.fillStyle = '#FFCC00';
+        ctx.fillRect(40, 635, 520, 3);
 
         // Website footer
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#111111';
         ctx.font = 'bold 17px sans-serif';
         ctx.fillText('www.gastrotorre.es', 300, 675);
 
@@ -114,16 +114,16 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
       <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-scaleUp">
         {/* Header */}
-        <div className="bg-torre-700 p-5 text-white flex items-center justify-between">
+        <div className="bg-[#111111] p-5 text-white flex items-center justify-between border-b border-[#FFCC00]/40">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-oro-300">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#FFCC00]">
               Código QR Oficial
             </span>
             <h3 className="text-lg font-black">{restaurant.name}</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white"
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -138,12 +138,12 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
           {/* Standee Preview */}
           <div
             ref={qrRef}
-            className="relative mx-auto bg-gradient-to-b from-blue-50/60 to-amber-50/40 dark:from-slate-800 dark:to-slate-850 p-6 rounded-2xl border-2 border-dashed border-torre-200 dark:border-torre-700 shadow-inner flex flex-col items-center"
+            className="relative mx-auto bg-gradient-to-b from-amber-50/60 to-slate-50/40 dark:from-slate-800 dark:to-slate-850 p-6 rounded-2xl border-2 border-dashed border-[#FFCC00]/50 dark:border-[#FFCC00]/40 shadow-inner flex flex-col items-center"
           >
             <div className="flex items-center gap-1.5 mb-2">
               <span className="text-xs font-black text-slate-900 dark:text-white tracking-tight">GASTROTORRE</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-torre-600"></span>
-              <span className="text-[11px] font-bold text-torre-800 dark:text-torre-300">Carta Digital</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FFCC00]"></span>
+              <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">Carta Digital</span>
             </div>
 
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">
@@ -162,8 +162,8 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
 
             {/* PROPORCIONADO POR GASTROTORRE BRANDING */}
             <div className="mt-3.5 flex flex-col items-center gap-0.5">
-              <div className="flex items-center gap-1 text-xs font-black text-torre-800 dark:text-torre-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-oro-500"></span>
+              <div className="flex items-center gap-1 text-xs font-black text-slate-800 dark:text-slate-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FFCC00]"></span>
                 <span>Proporcionado por GastroTorre</span>
               </div>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
@@ -171,8 +171,8 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
               </span>
             </div>
 
-            <div className="mt-2.5 flex items-center gap-1 text-[10px] font-medium text-torre-700 dark:text-torre-300 bg-torre-100/80 dark:bg-torre-900/50 px-2.5 py-0.5 rounded-full">
-              <Sparkles className="w-3 h-3 text-oro-500" />
+            <div className="mt-2.5 flex items-center gap-1 text-[10px] font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+              <Sparkles className="w-3 h-3 text-[#FFCC00]" />
               <span>Sin apps • Carga al instante</span>
             </div>
           </div>
@@ -190,16 +190,16 @@ export const QRModal: React.FC<QRModalProps> = ({ isOpen, onClose, restaurant })
             <button
               onClick={handleDownloadPNG}
               disabled={downloading}
-              className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-torre-50 hover:bg-torre-100 dark:bg-torre-950 dark:hover:bg-torre-900 text-torre-900 dark:text-torre-200 text-xs font-bold transition-all active:scale-95 border border-torre-200 dark:border-torre-800"
+              className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-[#FFCC00]/15 hover:bg-[#FFCC00]/25 dark:bg-[#FFCC00]/15 dark:hover:bg-[#FFCC00]/25 text-[#111111] dark:text-white text-xs font-black transition-all active:scale-95 border border-[#FFCC00]/40"
               title="Descargar imagen PNG para imprimir"
             >
-              <Download className="w-3.5 h-3.5 text-torre-700 dark:text-torre-400" />
+              <Download className="w-3.5 h-3.5 text-[#111111] dark:text-[#FFCC00]" />
               <span>{downloading ? 'Generando...' : 'Descargar'}</span>
             </button>
 
             <button
               onClick={handlePrint}
-              className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95"
+              className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black transition-all shadow-md active:scale-95"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Imprimir</span>

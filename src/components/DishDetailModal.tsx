@@ -156,7 +156,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div className="space-y-0.5 flex-1">
               {restaurantName && (
-                <span className="text-[10px] font-black text-torre-600 dark:text-torre-400 uppercase tracking-widest block">
+                <span className="text-[10px] font-black text-[#FFCC00] uppercase tracking-widest block">
                   {restaurantName}
                 </span>
               )}
@@ -166,7 +166,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
             </div>
 
             <div className="text-right shrink-0">
-              <span className="text-xl sm:text-2xl font-black text-torre-700 dark:text-torre-400 bg-torre-50 dark:bg-torre-950/80 px-3.5 py-1 rounded-2xl border border-torre-200 dark:border-torre-800 shadow-xs inline-block">
+              <span className="text-xl sm:text-2xl font-black text-[#111111] dark:text-white bg-[#FFCC00]/20 dark:bg-[#FFCC00]/25 px-3.5 py-1 rounded-2xl border border-[#FFCC00]/50 shadow-xs inline-block">
                 {dish.price.toFixed(2)} €
               </span>
               <span className="text-[10px] text-slate-400 block font-medium mt-0.5">IVA incluido</span>
@@ -216,7 +216,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
           </div>
 
           {/* Social Proof / Interest Badge */}
-          <div className="p-3 rounded-2xl bg-torre-50/70 dark:bg-slate-800/70 border border-torre-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
+          <div className="p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
               <Flame className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="text-[11px] font-medium">
@@ -230,15 +230,15 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
         <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
           <button
             onClick={handleShare}
-            className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all shadow-xs"
+            className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all shadow-xs"
           >
-            <Share2 className="w-4 h-4 text-torre-600" />
+            <Share2 className="w-4 h-4 text-slate-600 dark:text-slate-300" />
             <span>Compartir</span>
           </button>
 
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-2xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-black shadow-md shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-1.5"
+            className="px-6 py-2.5 rounded-2xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-1.5"
           >
             <Check className="w-4 h-4" />
             <span>Volver a la Carta</span>

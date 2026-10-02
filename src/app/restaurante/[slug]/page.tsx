@@ -138,7 +138,7 @@ export default function RestaurantDetailPage() {
         <p className="text-xs text-slate-500 max-w-xs">El restaurante solicitado no está disponible en la guía de Torrelodones.</p>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-torre-600 text-white text-xs font-bold shadow-md shadow-blue-500/20"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFCC00] text-[#111111] text-xs font-black shadow-md hover:bg-[#e6b800] transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Volver al Directorio</span>
@@ -315,7 +315,7 @@ export default function RestaurantDetailPage() {
 
           {/* Restaurant Title Info on Cover */}
           <div className="absolute bottom-4 left-4 right-4 text-white space-y-1">
-            <div className="flex items-center gap-1.5 text-xs text-oro-300 font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 text-xs text-[#FFCC00] font-bold uppercase tracking-wider">
               <span>{restaurant.cuisine}</span>
               <span>•</span>
               <span className="text-white bg-white/20 px-1.5 py-0.2 rounded font-black">{restaurant.priceLevel}</span>
@@ -324,8 +324,8 @@ export default function RestaurantDetailPage() {
               {restaurant.name}
             </h1>
             <div className="flex items-center gap-2 text-xs text-slate-200 flex-wrap">
-              <span className="flex items-center gap-1 font-bold text-oro-400">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span className="flex items-center gap-1 font-bold text-[#FFCC00]">
+                <Star className="w-3.5 h-3.5 fill-[#FFCC00] text-[#FFCC00]" />
                 {liveRating.toFixed(1)}
               </span>
               <span>({liveReviewsCount} opiniones)</span>
@@ -334,7 +334,7 @@ export default function RestaurantDetailPage() {
                 <>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full text-[11px] font-bold text-white">
-                    <Users className="w-3 h-3 text-oro-300" />
+                    <Users className="w-3 h-3 text-[#FFCC00]" />
                     <span>Aforo: {restaurant.capacity} plazas</span>
                   </span>
                 </>
@@ -431,9 +431,9 @@ export default function RestaurantDetailPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => dbService.trackEvent(restaurant.id || restaurant.slug, 'directions_click')}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-torre-50 dark:bg-torre-950/40 hover:bg-torre-100 dark:hover:bg-torre-900/40 text-torre-950 dark:text-torre-200 border border-torre-200 dark:border-torre-800 text-center transition-all active:scale-95 shadow-sm"
+                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-center transition-all active:scale-95 shadow-sm"
                   >
-                    <Navigation className="w-4 h-4 text-torre-600 dark:text-torre-400 mb-1" />
+                    <Navigation className="w-4 h-4 text-[#FFCC00] mb-1" />
                     <span className="text-[11px] font-bold">Cómo llegar</span>
                   </a>
                 )}
@@ -444,20 +444,20 @@ export default function RestaurantDetailPage() {
           {/* Schedule, Address & Capacity info */}
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 flex-wrap gap-2">
             <div className="flex items-center gap-1.5 truncate min-w-0">
-              <MapPin className="w-3.5 h-3.5 text-torre-600 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-[#FFCC00] shrink-0" />
               <span className="truncate font-medium text-slate-700 dark:text-slate-300">{restaurant.address}</span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               {restaurant.capacity && (
                 <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                  <Users className="w-3 h-3 text-torre-600" />
+                  <Users className="w-3 h-3 text-[#FFCC00]" />
                   <span>Aforo: {restaurant.capacity}</span>
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => setShowScheduleModal(true)}
-                className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300 hover:text-torre-600 dark:hover:text-torre-400 transition-colors"
+                className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300 hover:text-[#FFCC00] transition-colors"
               >
                 <Clock className="w-3 h-3 text-slate-400" />
                 <span>{restaurant.schedule.days}</span>
@@ -562,13 +562,13 @@ export default function RestaurantDetailPage() {
       <div className="px-4 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-            <Filter className="w-3.5 h-3.5 text-torre-600" />
+            <Filter className="w-3.5 h-3.5 text-[#FFCC00]" />
             <span>Filtro de Alérgenos & Dietas:</span>
           </div>
 
           <button
             onClick={() => setShowAllergensGuide(true)}
-            className="text-[11px] font-bold text-torre-700 dark:text-torre-400 hover:underline flex items-center gap-1"
+            className="text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:text-[#FFCC00] hover:underline flex items-center gap-1"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Info 14 Alérgenos</span>
@@ -581,7 +581,7 @@ export default function RestaurantDetailPage() {
             onClick={() => handleFilterChange(null)}
             className={`px-3.5 py-1.5 rounded-full text-xs transition-all shrink-0 flex items-center gap-1.5 ${
               selectedDietFilter === null
-                ? 'bg-torre-600 text-white font-black border-2 border-torre-500 shadow-sm ring-2 ring-torre-400/40'
+                ? 'bg-[#FFCC00] text-[#111111] font-black border-2 border-[#111111] shadow-sm ring-2 ring-[#FFCC00]/40'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
             }`}
           >
@@ -639,7 +639,7 @@ export default function RestaurantDetailPage() {
               }}
               className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs transition-all shrink-0 ${
                 activeCategory === category.id
-                  ? 'bg-torre-600 text-white font-black shadow-md border-2 border-torre-500'
+                  ? 'bg-[#FFCC00] text-[#111111] font-black shadow-md border-2 border-[#111111]'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 shadow-2xs'
               }`}
             >
@@ -666,7 +666,7 @@ export default function RestaurantDetailPage() {
               className="scroll-mt-32 space-y-3"
             >
               {/* Category Header */}
-              <div className="border-b border-torre-200 dark:border-torre-800 pb-2 flex items-baseline justify-between">
+              <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex items-baseline justify-between">
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
                     {category.name}
@@ -675,7 +675,7 @@ export default function RestaurantDetailPage() {
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{category.description}</p>
                   )}
                 </div>
-                <span className="text-[11px] font-bold text-torre-700 dark:text-torre-300 bg-torre-50 dark:bg-torre-950 px-2.5 py-0.5 rounded-full border border-torre-200 dark:border-torre-800">
+                <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
                   {dishes.length} {dishes.length === 1 ? 'plato' : 'platos'}
                 </span>
               </div>
@@ -701,7 +701,7 @@ export default function RestaurantDetailPage() {
                       }}
                       className={`p-4 rounded-3xl border transition-all cursor-pointer group active:scale-[0.98] select-none ${
                         dish.isAvailable
-                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-soft hover:shadow-float hover:border-torre-400 dark:hover:border-torre-500 hover:ring-2 hover:ring-torre-400/20'
+                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-soft hover:shadow-float hover:border-[#FFCC00] hover:ring-2 hover:ring-[#FFCC00]/20'
                           : 'bg-slate-100/70 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-60'
                       }`}
                     >
@@ -711,8 +711,8 @@ export default function RestaurantDetailPage() {
                           {/* Specialty / Available / Diet Badges */}
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {dish.isSpecialty && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider border border-amber-300 dark:border-amber-800">
-                                <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFCC00]/20 dark:bg-[#FFCC00]/20 text-[#111111] dark:text-[#FFCC00] text-[10px] font-black uppercase tracking-wider border border-[#FFCC00]/40">
+                                <Sparkles className="w-3 h-3 text-[#FFCC00]" />
                                 Especialidad
                               </span>
                             )}
@@ -731,7 +731,7 @@ export default function RestaurantDetailPage() {
                           </div>
 
                           {/* Dish Name */}
-                          <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug group-hover:text-torre-600 dark:group-hover:text-torre-400 transition-colors flex items-center justify-between gap-2">
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug group-hover:text-amber-500 dark:group-hover:text-[#FFCC00] transition-colors flex items-center justify-between gap-2">
                             <span>{dish.name}</span>
                             <span className="text-[10px] text-slate-400 font-normal opacity-0 group-hover:opacity-100 transition-opacity">Ver detalle 🔍</span>
                           </h4>
@@ -755,7 +755,7 @@ export default function RestaurantDetailPage() {
 
                         {/* Price and Thumbnail Image */}
                         <div className="flex flex-col items-end justify-between shrink-0">
-                          <span className="text-base font-black text-torre-700 dark:text-torre-300 bg-torre-50 dark:bg-torre-950 px-2.5 py-1 rounded-xl border border-torre-100 dark:border-torre-800 shadow-sm">
+                          <span className="text-base font-black text-[#111111] dark:text-white bg-[#FFCC00]/20 dark:bg-[#FFCC00]/25 px-2.5 py-1 rounded-xl border border-[#FFCC00]/50 shadow-sm">
                             {dish.price.toFixed(2)}€
                           </span>
 
@@ -793,7 +793,7 @@ export default function RestaurantDetailPage() {
       {/* BRANDING FOOTER */}
       <div className="px-4 py-8 text-center space-y-2 border-t border-slate-200 dark:border-slate-800 mt-6 bg-white dark:bg-slate-900">
         <div className="flex items-center justify-center gap-1.5 text-xs font-black text-slate-800 dark:text-white">
-          <span className="w-2 h-2 rounded-full bg-torre-600"></span>
+          <span className="w-2 h-2 rounded-full bg-[#FFCC00]"></span>
           <span>Proporcionado por GastroTorre</span>
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
@@ -801,7 +801,7 @@ export default function RestaurantDetailPage() {
         </p>
         <Link
           href="/"
-          className="inline-block text-xs font-bold text-torre-600 dark:text-torre-400 hover:underline pt-1"
+          className="inline-block text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-[#FFCC00] dark:hover:text-[#FFCC00] hover:underline pt-1"
         >
           Explorar más restaurantes de Torrelodones →
         </Link>
@@ -861,30 +861,30 @@ export default function RestaurantDetailPage() {
 
               <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <span className="font-bold text-slate-700 dark:text-slate-300">Servicio Comidas:</span>
-                <span className="font-black text-torre-700 dark:text-torre-300">{restaurant.schedule.lunch}</span>
+                <span className="font-black text-slate-900 dark:text-white">{restaurant.schedule.lunch}</span>
               </div>
 
               {restaurant.schedule.dinner && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 flex justify-between items-center">
                   <span className="font-bold text-slate-700 dark:text-slate-300">Servicio Cenas:</span>
-                  <span className="font-black text-torre-700 dark:text-torre-300">{restaurant.schedule.dinner}</span>
+                  <span className="font-black text-slate-900 dark:text-white">{restaurant.schedule.dinner}</span>
                 </div>
               )}
 
               {restaurant.capacity && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800/60 flex justify-between items-center">
+                <div className="p-3 bg-[#FFCC00]/10 dark:bg-[#FFCC00]/10 rounded-2xl border border-[#FFCC00]/30 flex justify-between items-center">
                   <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-torre-600" />
+                    <Users className="w-3.5 h-3.5 text-[#FFCC00]" />
                     <span>Aforo total del local:</span>
                   </span>
-                  <span className="font-black text-torre-700 dark:text-torre-300">{restaurant.capacity} comensales</span>
+                  <span className="font-black text-slate-900 dark:text-white">{restaurant.capacity} comensales</span>
                 </div>
               )}
             </div>
 
             <button
               onClick={() => setShowScheduleModal(false)}
-              className="w-full py-2.5 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-bold transition-all shadow-md"
+              className="w-full py-2.5 rounded-xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black transition-all shadow-md"
             >
               Entendido
             </button>
@@ -958,7 +958,7 @@ export default function RestaurantDetailPage() {
 
             <button
               onClick={() => setShowAllergensGuide(false)}
-              className="w-full py-2.5 rounded-xl bg-torre-600 hover:bg-torre-700 text-white text-xs font-bold transition-all shadow-md"
+              className="w-full py-2.5 rounded-xl bg-[#FFCC00] hover:bg-[#e6b800] text-[#111111] text-xs font-black transition-all shadow-md"
             >
               Entendido
             </button>
